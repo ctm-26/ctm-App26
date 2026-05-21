@@ -1,0 +1,5 @@
+treasury
+*.o
+*.db
+*.db-wal
+*.db-shm

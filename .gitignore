@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# Xcode
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+build/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/
+Package.resolved
+
+# Generated Xcode projects from XcodeGen
+TreasuryiPad/TreasuryiPad.xcodeproj/

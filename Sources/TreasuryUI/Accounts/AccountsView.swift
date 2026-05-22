@@ -7,6 +7,7 @@ public struct AccountsView: View {
     @State private var showingAdd = false
     @State private var newName = ""
     @State private var newType: String = "checking"
+    @State private var isLoading: Bool = false
 
     private let types = ["checking", "savings", "credit", "cash", "brokerage", "other"]
 
@@ -24,6 +25,14 @@ public struct AccountsView: View {
                     Text(a.createdAt).font(.caption2).foregroundStyle(.tertiary)
                 }
                 .padding(.vertical, 4)
+            }
+        }
+        .overlay {
+            if isLoading && accounts.isEmpty {
+                ProgressView("Loading accounts…")
+                    .padding(20)
+                    .background(.regularMaterial,
+                                in: RoundedRectangle(cornerRadius: 12))
             }
         }
         .navigationTitle("Accounts")
@@ -69,6 +78,10 @@ public struct AccountsView: View {
     }
 
     private func reload() {
-        state.task({ try await state.ledger.accounts() }) { self.accounts = $0 }
+        isLoading = true
+        state.task({ try await state.ledger.accounts() }) { rows in
+            self.accounts = rows
+            self.isLoading = false
+        }
     }
 }

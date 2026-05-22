@@ -11,6 +11,7 @@ public enum SpendVisual: String, CaseIterable, Hashable {
 public struct SpendByCategoryChart: View {
     public let rollups: [CategoryRollup]
     @Binding public var visual: SpendVisual
+    @State private var measuredWidth: CGFloat = 0
 
     public init(rollups: [CategoryRollup], visual: Binding<SpendVisual>) {
         self.rollups = rollups; self._visual = visual
@@ -33,8 +34,15 @@ public struct SpendByCategoryChart: View {
                 ChartModeSwitcher(selection: $visual) { $0.rawValue }
             }
             chart
-                .frame(height: Theme.chartHeight)
+                .frame(height: Theme.responsiveChartHeight(width: max(measuredWidth, 280)))
                 .animation(.snappy, value: visual)
+                .background(
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: ChartWidthKey.self, value: geo.size.width)
+                    }
+                )
+                .onPreferenceChange(ChartWidthKey.self) { measuredWidth = $0 }
         }
     }
 

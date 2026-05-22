@@ -5,6 +5,7 @@ public struct RulesView: View {
     @Environment(AppState.self) private var state
     @State private var rules: [Rule] = []
     @State private var showAdd = false
+    @State private var isLoading: Bool = false
 
     @State private var newPattern = ""
     @State private var newCategory = ""
@@ -27,8 +28,17 @@ public struct RulesView: View {
                             state.task({ try await state.rules.removeRule(id: r.id) }) { _ in reload() }
                         } label: { Image(systemName: "trash") }
                             .buttonStyle(.borderless)
+                            .accessibilityLabel("Delete rule")
                     }
                 }
+            }
+        }
+        .overlay {
+            if isLoading && rules.isEmpty {
+                ProgressView("Loading rules…")
+                    .padding(20)
+                    .background(.regularMaterial,
+                                in: RoundedRectangle(cornerRadius: 12))
             }
         }
         .navigationTitle("Rules")
@@ -86,6 +96,10 @@ public struct RulesView: View {
     }
 
     private func reload() {
-        state.task({ try await state.rules.rules() }) { self.rules = $0 }
+        isLoading = true
+        state.task({ try await state.rules.rules() }) { rows in
+            self.rules = rows
+            self.isLoading = false
+        }
     }
 }

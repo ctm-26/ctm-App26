@@ -78,6 +78,8 @@ public struct ImportView: View {
                 if case .success(let url) = result { fileURL = url }
             }
         }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 
     private func labeled(_ k: String, _ v: String) -> some View {
@@ -98,7 +100,10 @@ public struct ImportView: View {
         }) { result in
             preview = result
             running = false
-            if !dryRun, result.inserted > 0 { onComplete() }
+            if !dryRun, result.inserted > 0 {
+                onComplete()
+                dismiss()
+            }
         }
     }
 }

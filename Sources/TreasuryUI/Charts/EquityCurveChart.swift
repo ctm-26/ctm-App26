@@ -12,6 +12,7 @@ public enum EquityVisual: String, CaseIterable, Hashable {
 public struct EquityCurveChart: View {
     public let curve: [EquityPoint]
     @Binding public var visual: EquityVisual
+    @State private var measuredWidth: CGFloat = 0
 
     public init(curve: [EquityPoint], visual: Binding<EquityVisual>) {
         self.curve = curve; self._visual = visual
@@ -34,8 +35,16 @@ public struct EquityCurveChart: View {
                 Spacer()
                 ChartModeSwitcher(selection: $visual) { $0.rawValue }
             }
-            chart.frame(height: Theme.chartHeight)
+            chart
+                .frame(height: Theme.responsiveChartHeight(width: max(measuredWidth, 280)))
                 .animation(.snappy, value: visual)
+                .background(
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: ChartWidthKey.self, value: geo.size.width)
+                    }
+                )
+                .onPreferenceChange(ChartWidthKey.self) { measuredWidth = $0 }
         }
     }
 

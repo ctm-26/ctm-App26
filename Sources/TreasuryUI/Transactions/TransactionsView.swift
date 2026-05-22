@@ -9,6 +9,7 @@ public struct TransactionsView: View {
     @State private var categories: [Category] = []
     @State private var filter = LedgerService.TransactionFilter()
     @State private var showImport = false
+    @State private var showAdd = false
     @State private var recategorizeTarget: LedgerTransaction?
 
     public init() {}
@@ -37,6 +38,11 @@ public struct TransactionsView: View {
         .navigationTitle("Transactions")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
+                Button { showAdd = true } label: {
+                    Label("Add", systemImage: "plus")
+                }
+            }
+            ToolbarItem(placement: .primaryAction) {
                 Button { showImport = true } label: {
                     Label("Import CSV", systemImage: "square.and.arrow.down")
                 }
@@ -48,6 +54,17 @@ public struct TransactionsView: View {
         }
         .sheet(isPresented: $showImport) {
             ImportView(accounts: accounts, onComplete: { reload() })
+        }
+        .sheet(isPresented: $showAdd) {
+            AddTransactionSheet(
+                accounts: accounts,
+                categories: categories,
+                onSaved: {
+                    showAdd = false
+                    reload()
+                },
+                onCancel: { showAdd = false }
+            )
         }
         .sheet(item: $recategorizeTarget) { target in
             RecategorizeSheet(
@@ -206,6 +223,114 @@ fileprivate struct RecategorizeSheet: View {
                 }
             }
         }
+    }
+}
+
+fileprivate struct AddTransactionSheet: View {
+    @Environment(AppState.self) private var state
+
+    let accounts: [Account]
+    let categories: [Category]
+    let onSaved: () -> Void
+    let onCancel: () -> Void
+
+    @State private var selectedAccount: Account?
+    @State private var date: Date = Date()
+    @State private var description: String = ""
+    @State private var amountText: String = ""
+    @State private var selectedCategoryId: Int64? = nil
+    @State private var saving = false
+
+    private var parsedAmount: Money? { Money.parse(amountText) }
+    private var amountInvalid: Bool {
+        !amountText.trimmingCharacters(in: .whitespaces).isEmpty && parsedAmount == nil
+    }
+    private var canSave: Bool {
+        selectedAccount != nil
+            && !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && parsedAmount != nil
+            && !saving
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Account") {
+                    Picker("Account", selection: $selectedAccount) {
+                        Text("Select").tag(nil as Account?)
+                        ForEach(accounts) { Text($0.name).tag(Optional($0)) }
+                    }
+                }
+                Section("Details") {
+                    DatePicker("Date",
+                               selection: $date,
+                               displayedComponents: [.date])
+                    TextField("Description", text: $description)
+                    VStack(alignment: .leading, spacing: 4) {
+                        TextField("Amount (e.g. -42.18 or 1,234.56)",
+                                  text: $amountText)
+                        #if os(iOS)
+                            .keyboardType(.numbersAndPunctuation)
+                        #endif
+                        if amountInvalid {
+                            Text("Cannot parse amount")
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+                    }
+                }
+                Section("Category") {
+                    Picker("Category", selection: $selectedCategoryId) {
+                        Text("(unknown)").tag(nil as Int64?)
+                        ForEach(categories) { Text($0.name).tag(Optional($0.id)) }
+                    }
+                }
+            }
+            .navigationTitle("Add Transaction")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { onCancel() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { save() }
+                        .disabled(!canSave)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func save() {
+        guard let account = selectedAccount,
+              let amount = parsedAmount else { return }
+        let isoDate = Self.isoString(from: date)
+        let desc = description.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cid = selectedCategoryId
+        saving = true
+        state.task({
+            try await state.ledger.addTransaction(
+                accountId: account.id,
+                date: isoDate,
+                description: desc,
+                amount: amount,
+                categoryId: cid)
+        }) { _ in
+            saving = false
+            onSaved()
+        }
+    }
+
+    private static func isoString(from date: Date) -> String {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone.current
+        f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: date)
     }
 }
 

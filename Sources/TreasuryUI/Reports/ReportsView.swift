@@ -6,6 +6,8 @@ public struct ReportsView: View {
     @State private var month: String = currentMonth()
     @State private var report: MonthlyReport?
     @State private var spendVisual: SpendVisual = .bars
+    @State private var isLoading: Bool = false
+    @State private var errorMessage: String?
 
     public init() {}
 
@@ -13,20 +15,46 @@ public struct ReportsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 header
-                if let r = report {
-                    summary(r)
-                    Card {
-                        SpendByCategoryChart(rollups: r.byCategory, visual: $spendVisual)
-                    }
-                    accountBreakdown(r)
-                } else {
-                    ProgressView().padding()
-                }
+                content
             }
+            .frame(maxWidth: 1200, alignment: .leading)
             .padding(24)
         }
         .navigationTitle("Reports")
         .task { reload() }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if isLoading && report == nil {
+            ProgressView("Loading report…")
+                .frame(maxWidth: .infinity, minHeight: 240)
+        } else if let message = errorMessage {
+            ContentUnavailableView {
+                Label("Couldn’t load report", systemImage: "exclamationmark.triangle")
+            } description: {
+                Text(message)
+            } actions: {
+                Button("Retry") { reload() }
+                    .buttonStyle(.borderedProminent)
+            }
+            .frame(maxWidth: .infinity, minHeight: 240)
+        } else if let r = report {
+            if r.transactionCount == 0 {
+                ContentUnavailableView("No transactions for \(month)",
+                                       systemImage: "tray",
+                                       description: Text("Pick another month or import a CSV."))
+                    .frame(maxWidth: .infinity, minHeight: 240)
+            } else {
+                summary(r)
+                Card {
+                    SpendByCategoryChart(rollups: r.byCategory, visual: $spendVisual)
+                }
+                accountBreakdown(r)
+            }
+        } else {
+            ProgressView().padding()
+        }
     }
 
     private var header: some View {
@@ -84,7 +112,17 @@ public struct ReportsView: View {
 
     private func reload() {
         let m = month
-        state.task({ try await state.reports.monthly(m) }) { self.report = $0 }
+        isLoading = true
+        errorMessage = nil
+        Task { @MainActor in
+            do {
+                self.report = try await state.reports.monthly(m)
+            } catch {
+                self.errorMessage = "\(error)"
+                state.lastError = "\(error)"
+            }
+            self.isLoading = false
+        }
     }
 
     private static func currentMonth() -> String {

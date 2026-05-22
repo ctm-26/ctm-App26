@@ -2,6 +2,27 @@ import SwiftUI
 import TreasuryKernel
 import TreasuryTrading
 
+/// Lightweight, picker-friendly choice for the risk governor preset.
+/// Translated to `RiskGovernor.Config` only at submission time.
+private enum GovProfile: String, CaseIterable, Hashable {
+    case conservative
+    case balanced
+
+    var config: RiskGovernor.Config {
+        switch self {
+        case .conservative: return .conservative
+        case .balanced:     return .balanced
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .conservative: return "Conservative"
+        case .balanced:     return "Balanced"
+        }
+    }
+}
+
 public struct BacktestView: View {
     @Environment(AppState.self) private var state
 
@@ -10,7 +31,7 @@ public struct BacktestView: View {
     @State private var granularity: Granularity = .hour
     @State private var lookbackDays: Int = 30
     @State private var initialCashDollars: Double = 10_000
-    @State private var govConfig: RiskGovernor.Config = .balanced
+    @State private var govProfile: GovProfile = .balanced
     @State private var equityVisual: EquityVisual = .both
     @State private var priceVisual: PriceVisual = .candles
 
@@ -67,12 +88,10 @@ public struct BacktestView: View {
                     Stepper("Lookback: \(lookbackDays) days", value: $lookbackDays, in: 1...365)
                     Stepper("Cash: $\(Int(initialCashDollars))",
                             value: $initialCashDollars, in: 100...1_000_000, step: 500)
-                    Picker("Risk", selection: Binding(
-                        get: { govConfigKey() },
-                        set: { govConfig = $0 == "conservative" ? .conservative : .balanced }))
-                    {
-                        Text("Conservative").tag("conservative")
-                        Text("Balanced").tag("balanced")
+                    Picker("Risk", selection: $govProfile) {
+                        ForEach(GovProfile.allCases, id: \.self) { profile in
+                            Text(profile.displayName).tag(profile)
+                        }
                     }.pickerStyle(.segmented).frame(maxWidth: 280)
                 }
                 HStack {
@@ -85,10 +104,6 @@ public struct BacktestView: View {
                 }
             }
         }
-    }
-
-    private func govConfigKey() -> String {
-        govConfig.maxPositionPctEquity <= 0.10 ? "conservative" : "balanced"
     }
 
     private func statsCard(_ s: BacktestStats) -> some View {
@@ -160,7 +175,7 @@ public struct BacktestView: View {
         let g = granularity
         let lookback = lookbackDays
         let cash = Int64(initialCashDollars * 100)
-        let gov = govConfig
+        let gov = govProfile.config
         state.task({
             let end = Date()
             let start = end.addingTimeInterval(-TimeInterval(lookback * 86400))

@@ -9,6 +9,7 @@ public enum DashboardLens: String, CaseIterable, Hashable {
 
 public struct DashboardView: View {
     @Environment(AppState.self) private var state
+    @Environment(\.horizontalSizeClass) private var hSizeClass
 
     @State private var month: String = currentMonth()
     @State private var report: MonthlyReport?
@@ -46,7 +47,16 @@ public struct DashboardView: View {
                 }
                 accountTable
             }
+            .frame(maxWidth: 1200, alignment: .leading)
             .padding(24)
+        }
+        .overlay {
+            if loading && report == nil {
+                ProgressView("Loading dashboard…")
+                    .padding(20)
+                    .background(.regularMaterial,
+                                in: RoundedRectangle(cornerRadius: 12))
+            }
         }
         .navigationTitle("Dashboard")
         .toolbar {
@@ -54,6 +64,7 @@ public struct DashboardView: View {
                 Button { reload() } label: {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
+                .disabled(loading)
             }
         }
         .task { reload() }
@@ -72,16 +83,33 @@ public struct DashboardView: View {
         }
     }
 
+    @ViewBuilder
     private var summaryCards: some View {
         let income = report?.income ?? .zero
         let spend = report?.spending ?? .zero
         let net = report?.net ?? .zero
-        return HStack(spacing: 16) {
-            metricCard("Income", income.formatted(), Theme.incomeColor)
-            metricCard("Spending", spend.formatted(), Theme.spendingColor)
-            metricCard("Net", net.formatted(),
-                       net.cents >= 0 ? Theme.incomeColor : Theme.spendingColor)
-            metricCard("Transactions", "\(report?.transactionCount ?? 0)", Theme.neutralColor)
+        let netTint: Color = net.cents >= 0 ? Theme.incomeColor : Theme.spendingColor
+        let txCount = report?.transactionCount ?? 0
+
+        if hSizeClass == .compact {
+            // 2x2 grid on compact width (e.g. portrait iPhone / Slide Over iPad).
+            Grid(horizontalSpacing: 16, verticalSpacing: 16) {
+                GridRow {
+                    metricCard("Income", income.formatted(), Theme.incomeColor)
+                    metricCard("Spending", spend.formatted(), Theme.spendingColor)
+                }
+                GridRow {
+                    metricCard("Net", net.formatted(), netTint)
+                    metricCard("Transactions", "\(txCount)", Theme.neutralColor)
+                }
+            }
+        } else {
+            HStack(spacing: 16) {
+                metricCard("Income", income.formatted(), Theme.incomeColor)
+                metricCard("Spending", spend.formatted(), Theme.spendingColor)
+                metricCard("Net", net.formatted(), netTint)
+                metricCard("Transactions", "\(txCount)", Theme.neutralColor)
+            }
         }
     }
 
@@ -123,13 +151,16 @@ public struct DashboardView: View {
 
     private func reload() {
         loading = true
-        state.task({
-            let report = try await state.reports.monthly(month)
-            let daily = try await state.reports.dailyCumulative(months: 12)
-            let months = try await state.reports.months(last: 6)
-            return (report, daily, months)
-        }) { (r, d, m) in
-            self.report = r; self.dailyPoints = d; self.monthly = m
+        let m = month
+        Task { @MainActor in
+            do {
+                let r = try await state.reports.monthly(m)
+                let d = try await state.reports.dailyCumulative(months: 12)
+                let mt = try await state.reports.months(last: 6)
+                self.report = r; self.dailyPoints = d; self.monthly = mt
+            } catch {
+                state.lastError = "\(error)"
+            }
             self.loading = false
         }
     }

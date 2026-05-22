@@ -25,7 +25,7 @@ final class StrategiesTests: XCTestCase {
         XCTAssertEqual(sma[2], 2.0)
         XCTAssertEqual(sma[9], 9.0)
         let rsi = Indicators.rsi(closes, period: 5)
-        XCTAssertEqual(rsi.last??.rounded() ?? 0, 100, accuracy: 1)
+        XCTAssertEqual((rsi.last ?? nil)?.rounded() ?? 0, 100, accuracy: 1)
     }
 
     func testBacktestRuns() {

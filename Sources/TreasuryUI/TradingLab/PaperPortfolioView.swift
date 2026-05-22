@@ -17,6 +17,8 @@ public struct PaperPortfolioView: View {
     @State private var symbol: String = "BTC-USD"
     @State private var granularity: Granularity = .hour
     @State private var engineStatus: TradingEngine.Status = .idle
+    @State private var engineStartTrigger: Int = 0
+    @State private var engineStopTrigger: Int = 0
 
     private let strategies = StrategyCatalog.all()
 
@@ -38,6 +40,8 @@ public struct PaperPortfolioView: View {
             }
             .padding(24)
         }
+        .sensoryFeedback(.impact(weight: .medium), trigger: engineStartTrigger)
+        .sensoryFeedback(.impact(weight: .light), trigger: engineStopTrigger)
         .task { reloadPortfolios() }
     }
 
@@ -190,6 +194,7 @@ public struct PaperPortfolioView: View {
         state.engine = engine
         await engine.start()
         await refreshEngineStatus()
+        engineStartTrigger &+= 1
     }
 
     private func stopEngine() async {
@@ -197,6 +202,7 @@ public struct PaperPortfolioView: View {
             await engine.stop(reason: "manual stop")
         }
         await refreshEngineStatus()
+        engineStopTrigger &+= 1
     }
 
     /// Pull the real status from the actor so the UI mirrors engine state

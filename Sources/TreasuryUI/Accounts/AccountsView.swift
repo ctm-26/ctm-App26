@@ -41,9 +41,19 @@ public struct AccountsView: View {
                 Button { showingAdd = true } label: {
                     Label("Add account", systemImage: "plus")
                 }
+                .keyboardShortcut("n", modifiers: .command)
             }
         }
         .sheet(isPresented: $showingAdd) { addSheet }
+        .refreshable {
+            do {
+                let rows = try await state.ledger.accounts()
+                self.accounts = rows
+                self.isLoading = false
+            } catch {
+                state.lastError = "\(error)"
+            }
+        }
         .task { reload() }
     }
 

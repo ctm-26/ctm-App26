@@ -19,6 +19,11 @@ public final class AppState {
     public var currentPortfolio: PortfolioStore.PortfolioRow?
     public var lastError: String?
 
+    /// User-preferred currency code passed to `Money.formatted(currencyCode:)`
+    /// at the visible call sites (dashboard summary, account table, reports,
+    /// backtest equity readout). Default keeps existing behavior (USD).
+    public var preferredCurrencyCode: String = "USD"
+
     public init(db: LedgerDatabase, feed: any PriceFeed = CoinbasePriceFeed()) {
         self.db = db
         self.ledger = LedgerService(db: db)

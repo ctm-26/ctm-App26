@@ -52,7 +52,9 @@ public struct AccountsView: View {
             Form {
                 Section("Account") {
                     TextField("Name", text: $newName)
+                        #if os(iOS)
                         .textInputAutocapitalization(.words)
+                        #endif
                     Picker("Type", selection: $newType) {
                         ForEach(types, id: \.self) { Text($0) }
                     }

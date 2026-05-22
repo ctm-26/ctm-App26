@@ -9,7 +9,9 @@ public enum DashboardLens: String, CaseIterable, Hashable {
 
 public struct DashboardView: View {
     @Environment(AppState.self) private var state
+    #if os(iOS)
     @Environment(\.horizontalSizeClass) private var hSizeClass
+    #endif
 
     @State private var month: String = currentMonth()
     @State private var report: MonthlyReport?
@@ -91,6 +93,7 @@ public struct DashboardView: View {
         let netTint: Color = net.cents >= 0 ? Theme.incomeColor : Theme.spendingColor
         let txCount = report?.transactionCount ?? 0
 
+        #if os(iOS)
         if hSizeClass == .compact {
             // 2x2 grid on compact width (e.g. portrait iPhone / Slide Over iPad).
             Grid(horizontalSpacing: 16, verticalSpacing: 16) {
@@ -111,6 +114,15 @@ public struct DashboardView: View {
                 metricCard("Transactions", "\(txCount)", Theme.neutralColor)
             }
         }
+        #else
+        // macOS has no compact size class; use the regular horizontal layout.
+        HStack(spacing: 16) {
+            metricCard("Income", income.formatted(), Theme.incomeColor)
+            metricCard("Spending", spend.formatted(), Theme.spendingColor)
+            metricCard("Net", net.formatted(), netTint)
+            metricCard("Transactions", "\(txCount)", Theme.neutralColor)
+        }
+        #endif
     }
 
     private func metricCard(_ label: String, _ value: String, _ tint: Color) -> some View {

@@ -9,7 +9,7 @@ sandbox. Two clients on top of one SQLite schema:
 
 | Client | Lives in | Status |
 |---|---|---|
-| C CLI (`treasury …`) | `TreasuryKernel/` | shipped (v0.1) |
+| C CLI (`treasury …`) | `TreasuryKernelCLI/` | shipped (v0.1) |
 | SwiftUI iPad app | `TreasuryiPad/` + `Sources/` | this commit (v0.2) |
 
 The iPad app does not replace the CLI; both can open the same `treasury.db`.
@@ -23,14 +23,13 @@ REAL INPUTS  →  IMPORT GATE  →  LEDGER CORE  →  RULE ENGINE  →  OUTPUT M
 ## What's in this repo
 
 ```
-TreasuryKernel/           v0.1 — C + SQLite CLI (the canonical kernel)
+TreasuryKernelCLI/        v0.1 — C + SQLite CLI (the canonical kernel)
 Sources/
-  TreasuryKernel/         Swift wrapper over the same SQLite schema
+  TreasuryKernel/         Swift module — wrapper over the same SQLite schema
   TreasuryTrading/        strategies, paper broker, risk governor, price feed
   TreasuryUI/             SwiftUI iPad views + Swift Charts
 TreasuryiPad/             the iPad app target (XcodeGen spec)
 Tests/                    XCTest for the Swift modules
-SocialMemoryVault/        unrelated companion iOS project
 ```
 
 ## Building
@@ -38,7 +37,7 @@ SocialMemoryVault/        unrelated companion iOS project
 ### CLI (any Unix with `libsqlite3-dev`)
 
 ```bash
-cd TreasuryKernel
+cd TreasuryKernelCLI
 make            # builds ./treasury
 make test       # 28-assertion end-to-end check
 ```
@@ -59,7 +58,7 @@ swift build
 swift test
 ```
 
-See `TreasuryiPad/README.md` for the iPad app deep dive and `TreasuryKernel/README.md`
+See `TreasuryiPad/README.md` for the iPad app deep dive and `TreasuryKernelCLI/README.md`
 for the CLI walkthrough.
 
 ## What v0.2 adds on top of v0.1

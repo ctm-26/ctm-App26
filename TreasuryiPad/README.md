@@ -32,7 +32,7 @@ ctm-App26/
 ├── Tests/
 │   ├── TreasuryKernelTests/      ← end-to-end ledger test
 │   └── TreasuryTradingTests/     ← indicators, backtester, risk
-├── TreasuryKernel/               ← the v0.1 C CLI (unchanged)
+├── TreasuryKernelCLI/            ← the v0.1 C CLI (unchanged)
 └── TreasuryiPad/
     ├── App/TreasuryiPadApp.swift ← @main entry, opens the ledger
     ├── Resources/Info.plist
@@ -126,7 +126,7 @@ paper time either.
 ## How the two storage tools share one database
 
 The C CLI and the iPad app both target `treasury.db` with the same schema.
-`Schema.swift` documents the contract; `TreasuryKernel/src/db.c` is the C
+`Schema.swift` documents the contract; `TreasuryKernelCLI/src/db.c` is the C
 side of the same contract. The iPad app adds three trading-lab tables
 (`paper_portfolios`, `paper_trades`, `paper_equity_points`); the CLI ignores
 them.

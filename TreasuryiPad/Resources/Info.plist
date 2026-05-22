@@ -32,9 +32,7 @@
     <key>UILaunchScreen</key>
     <dict>
         <key>UIColorName</key>
-        <string></string>
-        <key>UIImageName</key>
-        <string></string>
+        <string>AccentColor</string>
     </dict>
     <key>UIRequiredDeviceCapabilities</key>
     <array>
@@ -56,5 +54,7 @@
     </dict>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Treasury Kernel uses the photo library only if you export a chart.</string>
+    <key>NSDocumentsFolderUsageDescription</key>
+    <string>Treasury Kernel needs access to documents to import bank-statement CSVs.</string>
 </dict>
 </plist>

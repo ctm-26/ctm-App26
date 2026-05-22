@@ -55,6 +55,23 @@ Then in Xcode: select an iPad simulator (or any iPad device) and hit Run.
 Running on macOS works too — the project is set up for "iPad on Mac" via the
 `SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD` flag.
 
+> `TreasuryiPad.xcodeproj` is git-ignored and **must be regenerated** after
+> every clone (or after any change to `project.yml`). Re-run `xcodegen
+> generate` whenever a teammate edits the spec.
+
+### Tests
+
+The unit tests (`TreasuryKernelTests`, `TreasuryTradingTests`) live in the SPM
+package, not in the Xcode project. Run them from the repo root:
+
+```bash
+swift test
+```
+
+This keeps the Xcode app target lean and matches CI, which runs `swift test`
+on macOS and Linux. The `.xcodeproj` does not currently bundle an Xcode test
+target.
+
 ## Verify the Swift core (no Xcode required)
 
 ```bash

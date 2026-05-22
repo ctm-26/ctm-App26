@@ -12,12 +12,12 @@ public struct LedgerService: Sendable {
         try await db.query("""
             SELECT a.id, a.name, a.type, a.created_at
             FROM accounts a ORDER BY a.name;
-            """) { stmt in
+            """) { dbi, stmt in
             Account(
                 id: sqlite3_column_int64(stmt, 0),
-                name: String(cString: sqlite3_column_text(stmt, 1)),
-                type: String(cString: sqlite3_column_text(stmt, 2)),
-                createdAt: String(cString: sqlite3_column_text(stmt, 3))
+                name: dbi.text(stmt, 1),
+                type: dbi.text(stmt, 2),
+                createdAt: dbi.text(stmt, 3)
             )
         }
     }
@@ -38,12 +38,12 @@ public struct LedgerService: Sendable {
     public func findAccount(named name: String) async throws -> Account? {
         try await db.queryOne("""
             SELECT id, name, type, created_at FROM accounts WHERE name = ? LIMIT 1;
-            """, bind: { db, stmt in db.bindText(stmt, 1, name) }) { stmt in
+            """, bind: { db, stmt in db.bindText(stmt, 1, name) }) { dbi, stmt in
             Account(
                 id: sqlite3_column_int64(stmt, 0),
-                name: String(cString: sqlite3_column_text(stmt, 1)),
-                type: String(cString: sqlite3_column_text(stmt, 2)),
-                createdAt: String(cString: sqlite3_column_text(stmt, 3))
+                name: dbi.text(stmt, 1),
+                type: dbi.text(stmt, 2),
+                createdAt: dbi.text(stmt, 3)
             )
         }
     }
@@ -51,9 +51,9 @@ public struct LedgerService: Sendable {
     // MARK: - Categories
 
     public func categories() async throws -> [Category] {
-        try await db.query("SELECT id, name FROM categories ORDER BY name;") { stmt in
+        try await db.query("SELECT id, name FROM categories ORDER BY name;") { dbi, stmt in
             Category(id: sqlite3_column_int64(stmt, 0),
-                     name: String(cString: sqlite3_column_text(stmt, 1)))
+                     name: dbi.text(stmt, 1))
         }
     }
 
@@ -63,9 +63,9 @@ public struct LedgerService: Sendable {
         if let existing = try await db.queryOne(
             "SELECT id, name FROM categories WHERE name = ? COLLATE NOCASE LIMIT 1;",
             bind: { db, stmt in db.bindText(stmt, 1, trimmed) },
-            map: { stmt in
+            map: { dbi, stmt in
                 Category(id: sqlite3_column_int64(stmt, 0),
-                         name: String(cString: sqlite3_column_text(stmt, 1)))
+                         name: dbi.text(stmt, 1))
             })
         { return existing }
         let id = try await db.insert(
@@ -114,18 +114,17 @@ public struct LedgerService: Sendable {
                 dbi.bindText(stmt, idx, c); idx += 1
             }
             sqlite3_bind_int(stmt, idx, Int32(filter.limit))
-        }) { stmt in
+        }) { dbi, stmt in
             LedgerTransaction(
                 id: sqlite3_column_int64(stmt, 0),
                 accountId: sqlite3_column_int64(stmt, 1),
-                accountName: String(cString: sqlite3_column_text(stmt, 2)),
-                date: String(cString: sqlite3_column_text(stmt, 3)),
-                description: String(cString: sqlite3_column_text(stmt, 4)),
+                accountName: dbi.text(stmt, 2),
+                date: dbi.text(stmt, 3),
+                description: dbi.text(stmt, 4),
                 amount: Money(cents: sqlite3_column_int64(stmt, 5)),
                 categoryId: sqlite3_column_type(stmt, 6) == SQLITE_NULL ?
                     nil : sqlite3_column_int64(stmt, 6),
-                categoryName: sqlite3_column_type(stmt, 7) == SQLITE_NULL ?
-                    nil : String(cString: sqlite3_column_text(stmt, 7))
+                categoryName: dbi.optionalText(stmt, 7)
             )
         }
     }

@@ -44,11 +44,13 @@ public enum SidebarSection: String, CaseIterable, Identifiable, Hashable {
 public struct RootView: View {
     @Environment(AppState.self) private var state
     @State private var selection: SidebarSection? = .dashboard
+    /// Keep sidebar visible by default on iPad regular size class (13" Pro landscape).
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     public init() {}
 
     public var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             sidebar
         } detail: {
             detail

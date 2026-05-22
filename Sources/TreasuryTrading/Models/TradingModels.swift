@@ -53,7 +53,18 @@ public struct PaperFill: Identifiable, Sendable {
     public let order: Order
     public let priceCents: Int64
     public let feeCents: Int64
+    /// The quantity actually filled in base units. May differ from
+    /// `order.qty` when the broker or governor clamped (e.g. partial sell
+    /// because held < requested, or buy capped by the per-position limit).
+    public let filledQty: Double
     public let executedAt: Date
+    public init(id: UUID, order: Order, priceCents: Int64, feeCents: Int64,
+                filledQty: Double, executedAt: Date)
+    {
+        self.id = id; self.order = order; self.priceCents = priceCents
+        self.feeCents = feeCents; self.filledQty = filledQty
+        self.executedAt = executedAt
+    }
 }
 
 public struct EquityPoint: Identifiable, Hashable, Sendable {

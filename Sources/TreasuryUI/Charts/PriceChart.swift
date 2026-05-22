@@ -12,6 +12,7 @@ public struct PriceChart: View {
     public let candles: [Candle]
     @Binding public var visual: PriceVisual
     public let overlays: [(label: String, points: [(Date, Double)], color: Color)]
+    @State private var measuredWidth: CGFloat = 0
 
     public init(candles: [Candle], visual: Binding<PriceVisual>,
                 overlays: [(label: String, points: [(Date, Double)], color: Color)] = []) {
@@ -25,8 +26,16 @@ public struct PriceChart: View {
                 Spacer()
                 ChartModeSwitcher(selection: $visual) { $0.rawValue }
             }
-            chart.frame(height: Theme.chartHeight)
+            chart
+                .frame(height: Theme.responsiveChartHeight(width: max(measuredWidth, 280)))
                 .animation(.snappy, value: visual)
+                .background(
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: ChartWidthKey.self, value: geo.size.width)
+                    }
+                )
+                .onPreferenceChange(ChartWidthKey.self) { measuredWidth = $0 }
         }
     }
 

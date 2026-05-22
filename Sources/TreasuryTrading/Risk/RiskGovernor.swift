@@ -45,17 +45,33 @@ public final class RiskGovernor: @unchecked Sendable {
     }
 
     public enum Decision: Equatable, Sendable {
-        case approve(qtyBaseUnits: Double)
+        /// Approved size in base units. `note` carries advisory metadata
+        /// (e.g. "clamped from <requested> to <held>") that callers should
+        /// thread into the audit log when present.
+        case approve(qtyBaseUnits: Double, note: String?)
         case reject(reason: String)
     }
 
     public let config: Config
+    /// Fee rate the broker will apply, used to reserve fees in spend
+    /// approval so we don't approve an order the broker will then reject for
+    /// insufficient cash. Should match `PaperBroker.feeRate`.
+    public let feeRate: Double
     public private(set) var tripped: Bool = false
     public private(set) var tripReason: String? = nil
     public private(set) var peakEquityCents: Int64 = 0
+    // NOTE: `sessionStartCents` is set on the first `updateEquity` call and
+    // resets to 0 on `reset()` or whenever the engine restarts (the value
+    // lives only in memory). This silently re-baselines the daily-loss
+    // limit. Schema migration is out of scope for this PR.
+    // TODO(v0.2.2): persist `sessionStartCents` (and peak/tripped) in the
+    // ledger DB so daily limits survive an app restart.
     public private(set) var sessionStartCents: Int64 = 0
 
-    public init(config: Config) { self.config = config }
+    public init(config: Config, feeRate: Double = 0.0040) {
+        self.config = config
+        self.feeRate = feeRate
+    }
 
     /// Update the running peak; call this once per equity sample.
     public func updateEquity(_ equityCents: Int64) {
@@ -95,17 +111,38 @@ public final class RiskGovernor: @unchecked Sendable {
             if maxSpendCents <= 0 {
                 return .reject(reason: "no allocatable cash")
             }
-            let requestedSpend = Int64((order.qty * lastPrice * 100.0).rounded())
+            // Reserve fees in the approval so the broker doesn't reject a
+            // size we just approved. `1 + feeRate` covers the worst case
+            // where the broker computes fees on full notional.
+            let requestedSpend = Int64((order.qty * lastPrice * (1 + feeRate) * 100.0).rounded())
+            // Hard reject if the strategy asked to spend more cash than we
+            // physically have (after the fee reserve). This is distinct from
+            // clamping due to the per-position cap: the position cap will
+            // clamp silently, but a bald cash overage rejects outright so
+            // strategies can't mask sizing bugs as "small fills".
+            if requestedSpend > cashLimit {
+                return .reject(reason: "fee-inclusive spend exceeds cash")
+            }
             let allowedSpend = min(requestedSpend, maxSpendCents)
-            let qty = (Double(allowedSpend) / 100.0) / lastPrice
+            // Back out the fee reserve to get the deployable notional, then
+            // convert to base units.
+            let deployableCents = Double(allowedSpend) / (1 + feeRate)
+            let qty = (deployableCents / 100.0) / lastPrice
             if qty <= 0 {
                 return .reject(reason: "size would round to zero")
             }
-            return .approve(qtyBaseUnits: qty)
+            let note = allowedSpend < requestedSpend
+                ? "clamped from \(order.qty) to \(qty)"
+                : nil
+            return .approve(qtyBaseUnits: qty, note: note)
         case .sell:
             let held = portfolio.position(for: order.symbol)?.qty ?? 0
             if held <= 0 { return .reject(reason: "no position to sell") }
-            return .approve(qtyBaseUnits: min(order.qty, held))
+            let approved = min(order.qty, held)
+            let note = approved < order.qty
+                ? "clamped from \(order.qty) to \(held)"
+                : nil
+            return .approve(qtyBaseUnits: approved, note: note)
         }
     }
 

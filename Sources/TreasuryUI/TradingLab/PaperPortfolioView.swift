@@ -189,13 +189,23 @@ public struct PaperPortfolioView: View {
             config: .init(symbol: symbol, granularity: granularity))
         state.engine = engine
         await engine.start()
-        engineStatus = .running
+        await refreshEngineStatus()
     }
 
     private func stopEngine() async {
         if let engine = state.engine {
             await engine.stop(reason: "manual stop")
         }
-        engineStatus = .stopped(reason: "manual stop")
+        await refreshEngineStatus()
+    }
+
+    /// Pull the real status from the actor so the UI mirrors engine state
+    /// instead of guessing. Called after start/stop as a one-shot — no polling.
+    private func refreshEngineStatus() async {
+        if let status = await state.engine?.currentStatus() {
+            engineStatus = status
+        } else {
+            engineStatus = .idle
+        }
     }
 }

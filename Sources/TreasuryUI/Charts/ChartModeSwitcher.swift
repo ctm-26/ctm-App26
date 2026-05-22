@@ -21,5 +21,6 @@ where Mode.RawValue == String, Mode.AllCases: RandomAccessCollection
         }
         .pickerStyle(.segmented)
         .frame(maxWidth: 480)
+        .accessibilityLabel("Chart visualization mode")
     }
 }

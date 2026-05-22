@@ -10,6 +10,7 @@ public enum TimelineVisual: String, CaseIterable, Hashable {
 public struct NetWorthTimelineChart: View {
     public let points: [ReportService.DailyPoint]
     @Binding public var visual: TimelineVisual
+    @State private var measuredWidth: CGFloat = 0
 
     public init(points: [ReportService.DailyPoint], visual: Binding<TimelineVisual>) {
         self.points = points; self._visual = visual
@@ -24,8 +25,15 @@ public struct NetWorthTimelineChart: View {
                 ChartModeSwitcher(selection: $visual) { $0.rawValue }
             }
             chart
-                .frame(height: Theme.chartHeight)
+                .frame(height: Theme.responsiveChartHeight(width: max(measuredWidth, 280)))
                 .animation(.snappy, value: visual)
+                .background(
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: ChartWidthKey.self, value: geo.size.width)
+                    }
+                )
+                .onPreferenceChange(ChartWidthKey.self) { measuredWidth = $0 }
         }
     }
 

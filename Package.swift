@@ -38,7 +38,7 @@ let package = Package(
         ),
         .testTarget(
             name: "TreasuryTradingTests",
-            dependencies: ["TreasuryTrading"],
+            dependencies: ["TreasuryTrading", "TreasuryKernel"],
             path: "Tests/TreasuryTradingTests"
         ),
     ]

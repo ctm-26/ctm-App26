@@ -6,8 +6,10 @@ public struct TransactionsView: View {
     @Environment(AppState.self) private var state
     @State private var transactions: [LedgerTransaction] = []
     @State private var accounts: [Account] = []
+    @State private var categories: [Category] = []
     @State private var filter = LedgerService.TransactionFilter()
     @State private var showImport = false
+    @State private var recategorizeTarget: LedgerTransaction?
 
     public init() {}
 
@@ -18,6 +20,17 @@ public struct TransactionsView: View {
                 .padding(.top, 16)
             List(transactions) { row in
                 TransactionRow(row: row)
+                    .contextMenu {
+                        categoryContextMenu(for: row)
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button {
+                            recategorizeTarget = row
+                        } label: {
+                            Label("Recategorize\u{2026}", systemImage: "tag")
+                        }
+                        .tint(.blue)
+                    }
             }
             .listStyle(.plain)
         }
@@ -36,7 +49,48 @@ public struct TransactionsView: View {
         .sheet(isPresented: $showImport) {
             ImportView(accounts: accounts, onComplete: { reload() })
         }
-        .task { reload(); reloadAccounts() }
+        .sheet(item: $recategorizeTarget) { target in
+            RecategorizeSheet(
+                transaction: target,
+                categories: categories,
+                onSelect: { newCategoryId in
+                    recategorizeTarget = nil
+                    applyCategory(transactionId: target.id, categoryId: newCategoryId)
+                },
+                onCancel: { recategorizeTarget = nil }
+            )
+            .presentationDetents([.medium])
+        }
+        .task { reload(); reloadAccounts(); reloadCategories() }
+    }
+
+    @ViewBuilder
+    private func categoryContextMenu(for row: LedgerTransaction) -> some View {
+        Button("Current: \(row.categoryName ?? "(unknown)")") {}
+            .disabled(true)
+        Divider()
+        if categories.isEmpty {
+            Button("No categories defined \u{2014} add one in Rules.") {}
+                .disabled(true)
+        } else {
+            ForEach(categories) { cat in
+                Button {
+                    applyCategory(transactionId: row.id, categoryId: cat.id)
+                } label: {
+                    if row.categoryId == cat.id {
+                        Label(cat.name, systemImage: "checkmark")
+                    } else {
+                        Text(cat.name)
+                    }
+                }
+            }
+            Divider()
+            Button(role: .destructive) {
+                applyCategory(transactionId: row.id, categoryId: nil)
+            } label: {
+                Label("Clear category", systemImage: "xmark.circle")
+            }
+        }
     }
 
     private var filterBar: some View {
@@ -80,6 +134,78 @@ public struct TransactionsView: View {
     }
     private func reloadAccounts() {
         state.task({ try await state.ledger.accounts() }) { self.accounts = $0 }
+    }
+    private func reloadCategories() {
+        state.task({ try await state.ledger.categories() }) { self.categories = $0 }
+    }
+
+    private func applyCategory(transactionId: Int64, categoryId: Int64?) {
+        state.task({
+            try await state.ledger.setCategory(transactionId: transactionId,
+                                               categoryId: categoryId)
+        }) { _ in
+            reload()
+        }
+    }
+}
+
+fileprivate struct RecategorizeSheet: View {
+    let transaction: LedgerTransaction
+    let categories: [Category]
+    let onSelect: (Int64?) -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Button {
+                        onSelect(nil)
+                    } label: {
+                        HStack {
+                            if transaction.categoryId == nil {
+                                Image(systemName: "checkmark")
+                            }
+                            Text("(unknown) \u{2014} Clear")
+                                .foregroundStyle(.red)
+                            Spacer()
+                        }
+                    }
+                }
+                if categories.isEmpty {
+                    Section {
+                        Text("No categories defined \u{2014} add one in Rules.")
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Section("Categories") {
+                        ForEach(categories) { cat in
+                            Button {
+                                onSelect(cat.id)
+                            } label: {
+                                HStack {
+                                    if transaction.categoryId == cat.id {
+                                        Image(systemName: "checkmark")
+                                    }
+                                    Text(cat.name)
+                                    Spacer()
+                                }
+                            }
+                            .foregroundStyle(.primary)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Recategorize")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { onCancel() }
+                }
+            }
+        }
     }
 }
 

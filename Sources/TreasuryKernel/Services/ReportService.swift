@@ -17,7 +17,7 @@ public struct ReportService: Sendable {
               COUNT(*)
             FROM transactions WHERE substr(date,1,7) = ?;
             """, bind: { dbi, stmt in dbi.bindText(stmt, 1, month) },
-            map: { stmt in
+            map: { _, stmt in
                 Summary(income: sqlite3_column_int64(stmt, 0),
                         spending: sqlite3_column_int64(stmt, 1),
                         count: Int(sqlite3_column_int(stmt, 2)))
@@ -30,8 +30,8 @@ public struct ReportService: Sendable {
             LEFT JOIN categories c ON c.id = t.category_id
             WHERE substr(t.date,1,7) = ?
             GROUP BY cat ORDER BY SUM(t.amount_cents) ASC;
-            """, bind: { dbi, stmt in dbi.bindText(stmt, 1, month) }) { stmt in
-            CategoryRollup(name: String(cString: sqlite3_column_text(stmt, 0)),
+            """, bind: { dbi, stmt in dbi.bindText(stmt, 1, month) }) { dbi, stmt in
+            CategoryRollup(name: dbi.text(stmt, 0),
                            amount: Money(cents: sqlite3_column_int64(stmt, 1)),
                            count: Int(sqlite3_column_int(stmt, 2)))
         }
@@ -41,8 +41,8 @@ public struct ReportService: Sendable {
             FROM transactions t JOIN accounts a ON a.id = t.account_id
             WHERE substr(t.date,1,7) = ?
             GROUP BY a.name ORDER BY a.name;
-            """, bind: { dbi, stmt in dbi.bindText(stmt, 1, month) }) { stmt in
-            AccountRollup(name: String(cString: sqlite3_column_text(stmt, 0)),
+            """, bind: { dbi, stmt in dbi.bindText(stmt, 1, month) }) { dbi, stmt in
+            AccountRollup(name: dbi.text(stmt, 0),
                           net: Money(cents: sqlite3_column_int64(stmt, 1)),
                           count: Int(sqlite3_column_int(stmt, 2)))
         }
@@ -68,8 +68,8 @@ public struct ReportService: Sendable {
             SELECT date, SUM(amount_cents) FROM transactions
             WHERE date >= date('now', ?)
             GROUP BY date ORDER BY date;
-            """, bind: { dbi, stmt in dbi.bindText(stmt, 1, "-\(months) months") }) { stmt in
-            (String(cString: sqlite3_column_text(stmt, 0)),
+            """, bind: { dbi, stmt in dbi.bindText(stmt, 1, "-\(months) months") }) { dbi, stmt in
+            (dbi.text(stmt, 0),
              sqlite3_column_int64(stmt, 1))
         }
         var running: Int64 = 0
@@ -95,9 +95,9 @@ public struct ReportService: Sendable {
             FROM transactions
             WHERE date >= date('now', ?)
             GROUP BY m ORDER BY m;
-            """, bind: { dbi, stmt in dbi.bindText(stmt, 1, "-\(n) months") }) { stmt in
+            """, bind: { dbi, stmt in dbi.bindText(stmt, 1, "-\(n) months") }) { dbi, stmt in
             MonthlyTotal(
-                month: String(cString: sqlite3_column_text(stmt, 0)),
+                month: dbi.text(stmt, 0),
                 income: Money(cents: sqlite3_column_int64(stmt, 1)),
                 spending: Money(cents: sqlite3_column_int64(stmt, 2)))
         }

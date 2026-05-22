@@ -130,20 +130,28 @@ public actor TradingEngine {
     {
         switch governor.evaluate(order: order, lastPrice: lastPrice, portfolio: snap) {
         case .reject(let reason):
+            // Governor-side rejection: risk limits / no cash / etc.
             try await db.appendAudit(
-                action: "trade.reject",
+                action: "trade.reject.governor",
                 details: "symbol=\(order.symbol) side=\(order.side.rawValue) reason=\(reason)")
-        case .approve(let qty):
-            guard let fill = broker.execute(order: order, qtyBaseUnits: qty) else {
+        case .approve(let qty, let note):
+            switch broker.execute(order: order, qtyBaseUnits: qty) {
+            case .rejected(let reason):
+                // Broker-side rejection: insufficient cash, no market price.
+                // This should be rare now that the governor reserves fees,
+                // but we still audit it distinctly from a governor reject so
+                // operators can tell which gate said no.
                 try await db.appendAudit(
-                    action: "trade.skip",
-                    details: "symbol=\(order.symbol) reason=execution failed")
-                return
+                    action: "trade.reject.broker",
+                    details: "symbol=\(order.symbol) side=\(order.side.rawValue) reason=\(reason)")
+            case .filled(let fill):
+                try await persistFill(fill)
+                var details = "sym=\(order.symbol) qty=\(qty) px=\(lastPrice) strat=\(order.strategy ?? "?")"
+                if let note = note { details += " note=\(note)" }
+                try await db.appendAudit(
+                    action: "trade.\(order.side.rawValue)",
+                    details: details)
             }
-            try await persistFill(fill)
-            try await db.appendAudit(
-                action: "trade.\(order.side.rawValue)",
-                details: "sym=\(order.symbol) qty=\(qty) px=\(lastPrice) strat=\(order.strategy ?? "?")")
         }
     }
 
@@ -157,7 +165,7 @@ public actor TradingEngine {
             dbi.bindInt(stmt, 1, self.portfolioId)
             dbi.bindText(stmt, 2, fill.order.symbol)
             dbi.bindText(stmt, 3, fill.order.side.rawValue)
-            dbi.bindDouble(stmt, 4, fill.order.qty)
+            dbi.bindDouble(stmt, 4, fill.filledQty)
             dbi.bindInt(stmt, 5, fill.priceCents)
             dbi.bindInt(stmt, 6, fill.feeCents)
             dbi.bindText(stmt, 7, fill.order.strategy)

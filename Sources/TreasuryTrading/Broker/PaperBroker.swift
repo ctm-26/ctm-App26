@@ -47,39 +47,59 @@ public final class PaperBroker: @unchecked Sendable {
                         positions: Array(positions.values))
     }
 
-    /// Execute a sized order against the broker's marked price. Returns the
-    /// fill on success or nil if the order can't be filled (no price, etc.).
+    /// Outcome of an order execution. `.rejected` carries a human-readable
+    /// reason so the audit log and UI can distinguish "no market price" from
+    /// "insufficient cash" from "no position", etc.
+    public enum ExecuteOutcome: Sendable {
+        case filled(PaperFill)
+        case rejected(reason: String)
+    }
+
+    /// Execute a sized order against the broker's marked price.
+    /// Returns `.filled(PaperFill)` on success or `.rejected(reason:)` if the
+    /// order can't be filled.
     @discardableResult
-    public func execute(order: Order, qtyBaseUnits: Double, at time: Date = Date()) -> PaperFill? {
-        guard let price = lastPrices[order.symbol], price > 0 else { return nil }
+    public func execute(order: Order, qtyBaseUnits: Double, at time: Date = Date()) -> ExecuteOutcome {
+        guard let price = lastPrices[order.symbol], price > 0 else {
+            return .rejected(reason: "no market price")
+        }
         let notional = qtyBaseUnits * price
         let feeCents = Int64((notional * feeRate * 100.0).rounded())
         let notionalCents = Int64((notional * 100.0).rounded())
 
+        let filledQty: Double
         switch order.side {
         case .buy:
             let totalCost = notionalCents + feeCents
-            guard cashCents >= totalCost else { return nil }
+            guard cashCents >= totalCost else {
+                return .rejected(reason: "insufficient cash")
+            }
             cashCents -= totalCost
             var p = positions[order.symbol]
                 ?? Position(symbol: order.symbol, qty: 0, avgCostCents: 0, marketPrice: price)
             let prevValue = p.qty * (Double(p.avgCostCents) / 100.0)
             let newQty = p.qty + qtyBaseUnits
-            let newValue = prevValue + notional
+            // Convention: average-cost includes fees, so a sell at break-even
+            // price after fees registers as a loss (which it economically is).
+            let newValue = prevValue + notional + Double(feeCents) / 100.0
             p.qty = newQty
             p.avgCostCents = newQty > 0 ? Int64((newValue / newQty * 100.0).rounded()) : 0
             p.marketPrice = price
             positions[order.symbol] = p
+            filledQty = qtyBaseUnits
         case .sell:
             var p = positions[order.symbol]
                 ?? Position(symbol: order.symbol, qty: 0, avgCostCents: 0, marketPrice: price)
             let qty = min(qtyBaseUnits, p.qty)
-            guard qty > 0 else { return nil }
+            guard qty > 0 else {
+                return .rejected(reason: "no position to sell")
+            }
             let proceeds = Int64((qty * price * 100.0).rounded()) - feeCents
             cashCents += proceeds
             p.qty -= qty
             p.marketPrice = price
             positions[order.symbol] = p
+            filledQty = qty
         }
 
         let fill = PaperFill(
@@ -87,8 +107,9 @@ public final class PaperBroker: @unchecked Sendable {
             order: order,
             priceCents: Int64((price * 100.0).rounded()),
             feeCents: feeCents,
+            filledQty: filledQty,
             executedAt: time)
         fills.append(fill)
-        return fill
+        return .filled(fill)
     }
 }

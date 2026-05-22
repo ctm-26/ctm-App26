@@ -1,4 +1,5 @@
 import Foundation
+import TreasuryKernel
 
 /// Dollar-cost averaging. Ignores price; buys a fixed cash amount every
 /// `intervalBars` bars. Fires at bars intervalBars, 2*intervalBars, …

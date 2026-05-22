@@ -2,6 +2,8 @@ import SwiftUI
 import Charts
 import TreasuryKernel
 
+#if canImport(UIKit)
+
 public struct CashflowWaterfallChart: View {
     public let months: [ReportService.MonthlyTotal]
     @State private var measuredWidth: CGFloat = 0
@@ -139,3 +141,5 @@ extension CashflowWaterfallChart: AXChartDescriptorRepresentable {
         )
     }
 }
+
+#endif

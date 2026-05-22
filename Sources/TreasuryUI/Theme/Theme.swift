@@ -1,5 +1,7 @@
 import SwiftUI
 
+#if canImport(UIKit)
+
 /// Single place to tune look & feel. iPad-first sizing.
 public enum Theme {
     /// Default fixed chart height. Prefer `responsiveChartHeight(width:)` from
@@ -49,3 +51,5 @@ public struct Card<Content: View>: View {
                         in: RoundedRectangle(cornerRadius: Theme.cardCorner))
     }
 }
+
+#endif

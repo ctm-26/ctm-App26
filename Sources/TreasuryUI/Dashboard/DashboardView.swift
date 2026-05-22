@@ -1,6 +1,8 @@
 import SwiftUI
 import TreasuryKernel
 
+#if canImport(UIKit)
+
 public enum DashboardLens: String, CaseIterable, Hashable {
     case spend = "Spend"
     case timeline = "Timeline"
@@ -194,3 +196,5 @@ private struct MonthStepper: View {
         month = f.string(from: next); onChange()
     }
 }
+
+#endif

@@ -3,6 +3,8 @@ import Observation
 import TreasuryKernel
 import TreasuryTrading
 
+#if canImport(UIKit)
+
 @MainActor
 @Observable
 public final class AppState {
@@ -63,3 +65,5 @@ public final class AppState {
         return dir.appendingPathComponent("treasury.db")
     }
 }
+
+#endif

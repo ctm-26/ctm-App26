@@ -2,6 +2,8 @@ import SwiftUI
 import Charts
 import TreasuryKernel
 
+#if canImport(UIKit)
+
 public enum TimelineVisual: String, CaseIterable, Hashable {
     case area = "Area"
     case line = "Line"
@@ -182,3 +184,5 @@ extension NetWorthTimelineChart: AXChartDescriptorRepresentable {
         )
     }
 }
+
+#endif

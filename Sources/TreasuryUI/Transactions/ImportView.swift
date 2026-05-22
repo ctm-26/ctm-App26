@@ -2,6 +2,8 @@ import SwiftUI
 import TreasuryKernel
 import UniformTypeIdentifiers
 
+#if canImport(UIKit)
+
 public struct ImportView: View {
     @Environment(AppState.self) private var state
     @Environment(\.dismiss) private var dismiss
@@ -107,3 +109,5 @@ public struct ImportView: View {
         }
     }
 }
+
+#endif

@@ -2,6 +2,8 @@ import SwiftUI
 import TreasuryKernel
 import TreasuryTrading
 
+#if canImport(UIKit)
+
 /// Lightweight, picker-friendly choice for the risk governor preset.
 /// Translated to `RiskGovernor.Config` only at submission time.
 private enum GovProfile: String, CaseIterable, Hashable {
@@ -191,3 +193,5 @@ public struct BacktestView: View {
         }
     }
 }
+
+#endif

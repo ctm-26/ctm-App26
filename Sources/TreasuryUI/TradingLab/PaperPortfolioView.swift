@@ -2,6 +2,8 @@ import SwiftUI
 import TreasuryKernel
 import TreasuryTrading
 
+#if canImport(UIKit)
+
 public struct PaperPortfolioView: View {
     @Environment(AppState.self) private var state
 
@@ -209,3 +211,5 @@ public struct PaperPortfolioView: View {
         }
     }
 }
+
+#endif

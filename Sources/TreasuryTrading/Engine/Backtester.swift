@@ -10,21 +10,26 @@ public struct Backtester: Sendable {
     public let initialCashCents: Int64
     public let feeRate: Double
     public let governorConfig: RiskGovernor.Config
+    /// Periods per year for Sharpe annualization. Defaults to 252 (equities).
+    /// Pass `Granularity.barsPerYear` for crypto.
+    public let barsPerYear: Double
 
     public init(strategy: any Strategy,
                 symbol: String,
                 initialCashCents: Int64 = 10_000_00,
                 feeRate: Double = 0.0040,
-                governorConfig: RiskGovernor.Config = .balanced)
+                governorConfig: RiskGovernor.Config = .balanced,
+                barsPerYear: Double = 252)
     {
         self.strategy = strategy; self.symbol = symbol
         self.initialCashCents = initialCashCents; self.feeRate = feeRate
         self.governorConfig = governorConfig
+        self.barsPerYear = barsPerYear
     }
 
     public func run(candles: [Candle]) -> BacktestResult {
         let broker = PaperBroker(initialCashCents: initialCashCents, feeRate: feeRate)
-        let governor = RiskGovernor(config: governorConfig)
+        let governor = RiskGovernor(config: governorConfig, feeRate: feeRate)
         var equityCurve: [EquityPoint] = []
         var trades: [PaperFill] = []
 
@@ -53,8 +58,10 @@ public struct Backtester: Sendable {
                                   strategy: strategy.name,
                                   reason: reason)
                 switch governor.evaluate(order: order, lastPrice: bar.close, portfolio: snap) {
-                case .approve(let qty):
-                    if let fill = broker.execute(order: order, qtyBaseUnits: qty, at: bar.time) {
+                case .approve(let qty, _):
+                    if case .filled(let fill) = broker.execute(
+                        order: order, qtyBaseUnits: qty, at: bar.time)
+                    {
                         trades.append(fill)
                     }
                 case .reject:
@@ -68,8 +75,10 @@ public struct Backtester: Sendable {
                                   strategy: strategy.name,
                                   reason: reason)
                 switch governor.evaluate(order: order, lastPrice: bar.close, portfolio: snap) {
-                case .approve(let qty):
-                    if let fill = broker.execute(order: order, qtyBaseUnits: qty, at: bar.time) {
+                case .approve(let qty, _):
+                    if case .filled(let fill) = broker.execute(
+                        order: order, qtyBaseUnits: qty, at: bar.time)
+                    {
                         trades.append(fill)
                     }
                 case .reject:
@@ -77,13 +86,9 @@ public struct Backtester: Sendable {
                 }
             }
         }
-        if let lastBar = candles.last {
-            broker.updateMark(symbol: symbol, price: lastBar.close)
-            let snap = broker.snapshot(at: lastBar.time)
-            equityCurve.append(EquityPoint(time: lastBar.time,
-                                           equity: Money(cents: snap.equityCents),
-                                           cash: Money(cents: snap.cashCents)))
-        }
+        // Note: we deliberately do NOT append a final equity point here —
+        // the in-loop append already covers the last bar. Adding a duplicate
+        // sample double-counted the last bar in earlier versions.
         return BacktestResult(
             equityCurve: equityCurve, trades: trades,
             stats: stats(curve: equityCurve, trades: trades))
@@ -123,19 +128,39 @@ public struct Backtester: Sendable {
         let variance = returns.isEmpty ? 0
             : returns.reduce(0) { $0 + ($1 - mean) * ($1 - mean) } / Double(returns.count)
         let stdev = variance.squareRoot()
-        let sharpe = stdev > 0 ? (mean / stdev) * (252.0).squareRoot() : 0
+        let sharpe = stdev > 0 ? (mean / stdev) * barsPerYear.squareRoot() : 0
 
-        // win rate: pair adjacent buy/sell on the same symbol.
-        var wins = 0, losses = 0
-        var stack: [Int64] = []
+        // Win rate, FIFO at unit granularity. Each buy pushes its (price, qty)
+        // onto a queue; each sell walks the queue head-first, comparing the
+        // sell price against the cost basis of each unit consumed. We tally
+        // wins/losses by unit count (not by trade), so a single sell can
+        // split into multiple wins+losses if it spans multiple lots.
+        struct Lot { var priceCents: Int64; var qty: Double }
+        var queue: [Lot] = []
+        var winUnits: Double = 0
+        var lossUnits: Double = 0
         for t in trades {
-            if t.order.side == .buy { stack.append(t.priceCents) }
-            else if let entry = stack.popLast() {
-                if t.priceCents > entry { wins += 1 } else { losses += 1 }
+            if t.order.side == .buy {
+                queue.append(Lot(priceCents: t.priceCents, qty: t.filledQty))
+            } else {
+                var remaining = t.filledQty
+                while remaining > 0 && !queue.isEmpty {
+                    let head = queue[0]
+                    let take = min(head.qty, remaining)
+                    if t.priceCents > head.priceCents { winUnits += take }
+                    else if t.priceCents < head.priceCents { lossUnits += take }
+                    // break-even ticks neither bucket
+                    remaining -= take
+                    if take >= head.qty {
+                        queue.removeFirst()
+                    } else {
+                        queue[0].qty -= take
+                    }
+                }
             }
         }
-        let totalClosed = wins + losses
-        let winRate = totalClosed > 0 ? Double(wins) / Double(totalClosed) : 0
+        let totalUnits = winUnits + lossUnits
+        let winRate = totalUnits > 0 ? winUnits / totalUnits : 0
 
         return BacktestStats(
             initialEquity: initial, finalEquity: final,

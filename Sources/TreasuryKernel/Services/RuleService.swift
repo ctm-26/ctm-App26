@@ -12,11 +12,11 @@ public struct RuleService: Sendable {
             SELECT r.id, r.pattern, r.category_id, c.name, r.priority
             FROM category_rules r JOIN categories c ON c.id = r.category_id
             ORDER BY r.priority ASC, r.id ASC;
-            """) { stmt in
+            """) { dbi, stmt in
             Rule(id: sqlite3_column_int64(stmt, 0),
-                 pattern: String(cString: sqlite3_column_text(stmt, 1)),
+                 pattern: dbi.text(stmt, 1),
                  categoryId: sqlite3_column_int64(stmt, 2),
-                 categoryName: String(cString: sqlite3_column_text(stmt, 3)),
+                 categoryName: dbi.text(stmt, 3),
                  priority: Int(sqlite3_column_int(stmt, 4)))
         }
     }
@@ -58,9 +58,9 @@ public struct RuleService: Sendable {
         struct Row { let id: Int64; let desc: String }
         let rows: [Row] = try await db.query("""
             SELECT id, description FROM transactions WHERE category_id IS NULL ORDER BY id;
-            """) { stmt in
+            """) { dbi, stmt in
             Row(id: sqlite3_column_int64(stmt, 0),
-                desc: String(cString: sqlite3_column_text(stmt, 1)))
+                desc: dbi.text(stmt, 1))
         }
 
         var classified = 0

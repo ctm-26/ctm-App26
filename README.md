@@ -1,5 +1,9 @@
 # ctm-App26
 
+[![ci: c-kernel](https://github.com/ctm-26/ctm-App26/actions/workflows/c-kernel.yml/badge.svg?branch=main)](https://github.com/ctm-26/ctm-App26/actions/workflows/c-kernel.yml)
+[![ci: swift-tests](https://github.com/ctm-26/ctm-App26/actions/workflows/swift-tests.yml/badge.svg?branch=main)](https://github.com/ctm-26/ctm-App26/actions/workflows/swift-tests.yml)
+[![ci: schema-parity](https://github.com/ctm-26/ctm-App26/actions/workflows/schema-parity.yml/badge.svg)](https://github.com/ctm-26/ctm-App26/actions/workflows/schema-parity.yml)
+
 Treasury Kernel — a local-first personal finance ledger with a paper-trading
 sandbox. Two clients on top of one SQLite schema:
 

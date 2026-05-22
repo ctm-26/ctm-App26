@@ -61,7 +61,9 @@ public struct RulesView: View {
             Form {
                 Section("Match (case-insensitive substring)") {
                     TextField("Pattern (e.g. SHOPRITE)", text: $newPattern)
+                        #if os(iOS)
                         .textInputAutocapitalization(.characters)
+                        #endif
                 }
                 Section("Action") {
                     TextField("Category", text: $newCategory)

@@ -15,3 +15,6 @@ Package.resolved
 
 # Generated Xcode projects from XcodeGen
 TreasuryiPad/TreasuryiPad.xcodeproj/
+
+# Claude Code agent worktrees and transient state
+.claude/

@@ -90,6 +90,21 @@ public actor LedgerDatabase {
         return String(cString: p)
     }
 
+    /// Null-safe text read. Returns `fallback` when the column is NULL.
+    /// Use this everywhere instead of the raw `String(cString: sqlite3_column_text(...))`,
+    /// which traps on NULL.
+    nonisolated public func text(_ stmt: OpaquePointer, _ idx: Int32, default fallback: String = "") -> String {
+        guard let p = sqlite3_column_text(stmt, idx) else { return fallback }
+        return String(cString: p)
+    }
+
+    /// Null-safe text read that preserves the NULL signal as `nil`.
+    nonisolated public func optionalText(_ stmt: OpaquePointer, _ idx: Int32) -> String? {
+        guard sqlite3_column_type(stmt, idx) != SQLITE_NULL,
+              let p = sqlite3_column_text(stmt, idx) else { return nil }
+        return String(cString: p)
+    }
+
     /// Run a write inside a transaction. The block performs writes via direct
     /// SQLite calls; this guarantees BEGIN/COMMIT around them.
     public func writeTransaction<T>(_ block: () throws -> T) throws -> T {
@@ -119,26 +134,26 @@ public actor LedgerDatabase {
 
     public func query<T>(_ sql: String,
                          bind: (LedgerDatabase, OpaquePointer) -> Void = { _, _ in },
-                         _ map: (OpaquePointer) -> T) throws -> [T]
+                         _ map: (LedgerDatabase, OpaquePointer) -> T) throws -> [T]
     {
         let stmt = try prepare(sql)
         defer { sqlite3_finalize(stmt) }
         bind(self, stmt)
         var out: [T] = []
         while sqlite3_step(stmt) == SQLITE_ROW {
-            out.append(map(stmt))
+            out.append(map(self, stmt))
         }
         return out
     }
 
     public func queryOne<T>(_ sql: String,
                             bind: (LedgerDatabase, OpaquePointer) -> Void = { _, _ in },
-                            map: (OpaquePointer) -> T) throws -> T?
+                            map: (LedgerDatabase, OpaquePointer) -> T) throws -> T?
     {
         let stmt = try prepare(sql)
         defer { sqlite3_finalize(stmt) }
         bind(self, stmt)
-        if sqlite3_step(stmt) == SQLITE_ROW { return map(stmt) }
+        if sqlite3_step(stmt) == SQLITE_ROW { return map(self, stmt) }
         return nil
     }
 

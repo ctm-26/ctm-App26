@@ -18,6 +18,20 @@ public enum Granularity: Int, Sendable, CaseIterable {
         case .day: return "1d"
         }
     }
+
+    /// Number of bars in a calendar year for this granularity. Used by the
+    /// backtester to annualize Sharpe. Crypto trades 24/7, so we don't
+    /// discount for weekends/holidays (unlike equities' 252).
+    public var barsPerYear: Double {
+        switch self {
+        case .minute: return 365 * 24 * 60
+        case .fiveMin: return 365 * 24 * 12
+        case .fifteenMin: return 365 * 24 * 4
+        case .hour: return 365 * 24
+        case .sixHour: return 365 * 4
+        case .day: return 365
+        }
+    }
 }
 
 public protocol PriceFeed: Sendable {

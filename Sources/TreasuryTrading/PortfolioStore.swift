@@ -19,11 +19,11 @@ public struct PortfolioStore: Sendable {
         try await db.query("""
             SELECT id, name, cash_cents, created_at
             FROM paper_portfolios ORDER BY name;
-            """) { stmt in
+            """) { dbi, stmt in
             PortfolioRow(id: sqlite3_column_int64(stmt, 0),
-                         name: String(cString: sqlite3_column_text(stmt, 1)),
+                         name: dbi.text(stmt, 1),
                          cashCents: sqlite3_column_int64(stmt, 2),
-                         createdAt: String(cString: sqlite3_column_text(stmt, 3)))
+                         createdAt: dbi.text(stmt, 3))
         }
     }
 
@@ -47,9 +47,9 @@ public struct PortfolioStore: Sendable {
             """, bind: { dbi, stmt in
             dbi.bindInt(stmt, 1, portfolioId)
             sqlite3_bind_int(stmt, 2, Int32(limit))
-        }) { stmt in
+        }) { dbi, stmt in
             let iso = ISO8601DateFormatter()
-            let at = iso.date(from: String(cString: sqlite3_column_text(stmt, 0))) ?? Date()
+            let at = iso.date(from: dbi.text(stmt, 0)) ?? Date()
             return EquityPoint(
                 time: at,
                 equity: Money(cents: sqlite3_column_int64(stmt, 1)),
@@ -65,17 +65,17 @@ public struct PortfolioStore: Sendable {
             ORDER BY executed_at DESC, id DESC LIMIT ?;
             """, bind: { dbi, stmt in
             dbi.bindInt(stmt, 1, portfolioId); sqlite3_bind_int(stmt, 2, Int32(limit))
-        }) { stmt in
+        }) { dbi, stmt in
             TradeRow(
                 id: sqlite3_column_int64(stmt, 0),
-                symbol: String(cString: sqlite3_column_text(stmt, 1)),
-                side: String(cString: sqlite3_column_text(stmt, 2)),
+                symbol: dbi.text(stmt, 1),
+                side: dbi.text(stmt, 2),
                 qty: sqlite3_column_double(stmt, 3),
                 priceCents: sqlite3_column_int64(stmt, 4),
                 feeCents: sqlite3_column_int64(stmt, 5),
-                strategy: String(cString: sqlite3_column_text(stmt, 6)),
-                reason: String(cString: sqlite3_column_text(stmt, 7)),
-                executedAt: String(cString: sqlite3_column_text(stmt, 8)))
+                strategy: dbi.text(stmt, 6),
+                reason: dbi.text(stmt, 7),
+                executedAt: dbi.text(stmt, 8))
         }
     }
 

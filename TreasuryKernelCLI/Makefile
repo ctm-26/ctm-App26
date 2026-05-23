@@ -17,7 +17,8 @@ SRCS := \
 	$(SRC_DIR)/import.c \
 	$(SRC_DIR)/tx.c \
 	$(SRC_DIR)/report.c \
-	$(SRC_DIR)/audit.c
+	$(SRC_DIR)/audit.c \
+	$(SRC_DIR)/export.c
 
 OBJS := $(SRCS:.c=.o)
 

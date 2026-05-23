@@ -19,6 +19,7 @@
 #include "audit.h"
 #include "category.h"
 #include "db.h"
+#include "export.h"
 #include "import.h"
 #include "report.h"
 #include "rule.h"
@@ -49,6 +50,8 @@ static void print_usage(void)
 		"  classify                              apply rules to uncategorized tx\n"
 		"  report month <YYYY-MM>                monthly category / account report\n"
 		"  audit [--limit N]                     show audit log (newest first)\n"
+		"  export tx [--account N] [--month YYYY-MM] [--out F]   transactions as CSV\n"
+		"  export audit [--limit N] [--out F]                    audit log as CSV\n"
 		"  version                               print version\n"
 		"\n"
 		"database location: $TREASURY_DB or ./treasury.db\n",
@@ -94,6 +97,7 @@ int main(int argc, char **argv)
 	else if (strcmp(cmd, "classify") == 0)   rc = cmd_classify(db, argc - 2, argv + 2);
 	else if (strcmp(cmd, "report") == 0)     rc = cmd_report(db, argc - 2, argv + 2);
 	else if (strcmp(cmd, "audit") == 0)      rc = cmd_audit(db, argc - 2, argv + 2);
+	else if (strcmp(cmd, "export") == 0)     rc = cmd_export(db, argc - 2, argv + 2);
 	else {
 		fprintf(stderr, "treasury: unknown command '%s'\n", cmd);
 		print_usage();

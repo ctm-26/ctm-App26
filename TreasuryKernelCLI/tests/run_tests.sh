@@ -120,7 +120,70 @@ assert_contains "rule.add" "$out" "audit shows rule.add"
 assert_contains "classify" "$out" "audit shows classify"
 assert_contains "report.month" "$out" "audit shows report.month"
 
-echo "step 13: bad input handling"
+echo "step 13: export tx (CSV)"
+TX_CSV="$WORK/tx_export.csv"
+run export tx --out "$TX_CSV"
+header=$(head -1 "$TX_CSV")
+assert_eq "$header" "date,account,description,amount,category" "tx CSV header"
+tx_rows=$(($(wc -l <"$TX_CSV") - 1))
+if [[ "$tx_rows" -gt 1 ]]; then
+	echo "  ok    tx CSV has multiple rows ($tx_rows)"
+	PASS=$((PASS + 1))
+else
+	echo "  FAIL  tx CSV expected >1 rows, got $tx_rows"
+	FAIL=$((FAIL + 1))
+fi
+
+# Compare --month filter row count against `tx list --month`.
+TX_MAY="$WORK/tx_may.csv"
+run export tx --month 2026-05 --out "$TX_MAY"
+may_export_rows=$(($(wc -l <"$TX_MAY") - 1))
+may_list_rows=$(run tx list --month 2026-05 --limit 1000 | grep -E "^[0-9]+  " | wc -l)
+assert_eq "$may_export_rows" "$may_list_rows" "export tx --month row count matches tx list"
+
+# stdout default
+stdout_header=$(run export tx | head -1)
+assert_eq "$stdout_header" "date,account,description,amount,category" "tx CSV header (stdout)"
+
+echo "step 14: export tx escapes commas in descriptions"
+# The sample_chase fixture contains "ACH DEPOSIT, PAYROLL CO" (comma inside).
+# In CSV the field must appear quoted.
+if grep -qF '"ACH DEPOSIT, PAYROLL CO"' "$TX_CSV"; then
+	echo "  ok    description with comma is quoted"
+	PASS=$((PASS + 1))
+else
+	echo "  FAIL  description with comma not quoted in CSV"
+	sed 's/^/        | /' "$TX_CSV"
+	FAIL=$((FAIL + 1))
+fi
+if grep -qF '"NETFLIX.COM, ANNUAL"' "$TX_CSV"; then
+	echo "  ok    second comma-bearing description is quoted"
+	PASS=$((PASS + 1))
+else
+	echo "  FAIL  second comma-bearing description not quoted"
+	FAIL=$((FAIL + 1))
+fi
+
+echo "step 15: export audit (CSV)"
+AUD_CSV="$WORK/audit_export.csv"
+run export audit --out "$AUD_CSV"
+aud_header=$(head -1 "$AUD_CSV")
+assert_eq "$aud_header" "id,when,action,details" "audit CSV header"
+first_row=$(sed -n '2p' "$AUD_CSV")
+if [[ "$first_row" == 1,* ]]; then
+	echo "  ok    audit CSV first row starts with id=1"
+	PASS=$((PASS + 1))
+else
+	echo "  FAIL  audit CSV first row did not start with 1, got: $first_row"
+	FAIL=$((FAIL + 1))
+fi
+
+echo "step 16: audit trail records the exports"
+out=$(run audit --limit 200)
+assert_contains "export.tx" "$out" "audit shows export.tx"
+assert_contains "export.audit" "$out" "audit shows export.audit"
+
+echo "step 17: bad input handling"
 set +e
 out=$(run report month 2026-13 2>&1); rc=$?
 set -e

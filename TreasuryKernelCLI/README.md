@@ -93,6 +93,8 @@ OUTSIDE v0.1:
 | `treasury classify`      | Rule Engine                   |
 | `treasury report month`  | Output Mirror                 |
 | `treasury audit`         | Audit Trail                   |
+| `treasury export tx`     | Output Mirror (CSV)           |
+| `treasury export audit`  | Audit Trail (CSV)             |
 
 Every command writes to the audit log. When something looks wrong, the audit log
 is the first thing to read.
@@ -140,6 +142,28 @@ export TREASURY_DB=./mybudget.db
 # 8. read the history
 ./treasury audit --limit 50
 ```
+
+### Exporting to CSV
+
+Both the ledger and the audit log can be exported as RFC 4180-compliant CSV.
+Fields that contain commas, quotes, or newlines are quoted and embedded quotes
+are escaped by doubling. The default output is `stdout`; pass `--out` to write
+to a file.
+
+```bash
+# all transactions, every account, every month
+./treasury export tx --out tx.csv
+
+# scoped slice (filters mirror `tx list`)
+./treasury export tx --account "Chase Checking" --month 2026-05 --out chase_may.csv
+
+# audit log in chronological order (oldest first); --limit caps the row count
+./treasury export audit --out audit.csv
+./treasury export audit --limit 100 > recent_audit.csv
+```
+
+Each export call appends its own row to the audit log (`export.tx` /
+`export.audit`) so the trail of exports is itself traceable.
 
 ## CSV formats supported
 

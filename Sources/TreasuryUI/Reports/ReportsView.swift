@@ -23,6 +23,18 @@ public struct ReportsView: View {
             .padding(24)
         }
         .navigationTitle("Reports")
+        .refreshable {
+            let m = month
+            isLoading = true
+            errorMessage = nil
+            do {
+                self.report = try await state.reports.monthly(m)
+            } catch {
+                self.errorMessage = "\(error)"
+                state.lastError = "\(error)"
+            }
+            self.isLoading = false
+        }
         .task { reload() }
     }
 
@@ -73,10 +85,11 @@ public struct ReportsView: View {
     }
 
     private func summary(_ r: MonthlyReport) -> some View {
-        HStack(spacing: 16) {
-            metricCard("Income", r.income.formatted(), Theme.incomeColor)
-            metricCard("Spending", r.spending.formatted(), Theme.spendingColor)
-            metricCard("Net", r.net.formatted(),
+        let code = state.preferredCurrencyCode
+        return HStack(spacing: 16) {
+            metricCard("Income", r.income.formatted(currencyCode: code), Theme.incomeColor)
+            metricCard("Spending", r.spending.formatted(currencyCode: code), Theme.spendingColor)
+            metricCard("Net", r.net.formatted(currencyCode: code),
                        r.net.cents >= 0 ? Theme.incomeColor : Theme.spendingColor)
             metricCard("Tx", "\(r.transactionCount)", Theme.neutralColor)
         }
@@ -90,7 +103,7 @@ public struct ReportsView: View {
                     HStack {
                         Text(row.name).bold()
                         Spacer()
-                        Text(row.net.formatted())
+                        Text(row.net.formatted(currencyCode: state.preferredCurrencyCode))
                             .monospacedDigit()
                             .foregroundStyle(row.net.cents >= 0 ?
                                              Theme.incomeColor : Theme.spendingColor)

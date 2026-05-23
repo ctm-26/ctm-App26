@@ -17,6 +17,7 @@ public struct ImportView: View {
     @State private var dryRun = true
     @State private var preview: ImportResult?
     @State private var running = false
+    @State private var importSuccessTrigger: Int = 0
 
     public init(accounts: [Account], onComplete: @escaping () -> Void) {
         self.accounts = accounts; self.onComplete = onComplete
@@ -82,6 +83,7 @@ public struct ImportView: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        .sensoryFeedback(.success, trigger: importSuccessTrigger)
     }
 
     private func labeled(_ k: String, _ v: String) -> some View {
@@ -103,6 +105,7 @@ public struct ImportView: View {
             preview = result
             running = false
             if !dryRun, result.inserted > 0 {
+                importSuccessTrigger &+= 1
                 onComplete()
                 dismiss()
             }

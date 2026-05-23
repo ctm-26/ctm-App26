@@ -57,8 +57,11 @@ public struct AccountsView: View {
         .sheet(isPresented: $showingAdd) { addSheet }
         .refreshable {
             do {
-                let rows = try await state.ledger.accounts()
-                self.accounts = rows
+                async let accounts = state.ledger.accounts()
+                async let balances = state.ledger.accountBalances()
+                let (a, b) = try await (accounts, balances)
+                self.accounts = a
+                self.balances = b
                 self.isLoading = false
             } catch {
                 state.lastError = "\(error)"

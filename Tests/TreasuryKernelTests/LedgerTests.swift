@@ -102,6 +102,8 @@ final class LedgerTests: XCTestCase {
         // Zero-transaction account still appears with Money.zero.
         XCTAssertEqual(balances[accountC.id], Money.zero)
         XCTAssertEqual(balances[accountC.id]?.cents, 0)
+    }
+
     // MARK: - addTransaction
 
     func testAddTransactionSuccess() async throws {

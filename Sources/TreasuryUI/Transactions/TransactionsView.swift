@@ -10,6 +10,13 @@ public struct TransactionsView: View {
     @State private var filter = LedgerService.TransactionFilter()
     @State private var showImport = false
     @State private var recategorizeTarget: LedgerTransaction?
+    @State private var searchText: String = ""
+
+    private var displayedTransactions: [LedgerTransaction] {
+        let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { return transactions }
+        return transactions.filter { $0.description.range(of: q, options: .caseInsensitive) != nil }
+    }
 
     public init() {}
 
@@ -18,7 +25,7 @@ public struct TransactionsView: View {
             filterBar
                 .padding(.horizontal, 24)
                 .padding(.top, 16)
-            List(transactions) { row in
+            List(displayedTransactions) { row in
                 TransactionRow(row: row)
                     .contextMenu {
                         categoryContextMenu(for: row)
@@ -33,7 +40,13 @@ public struct TransactionsView: View {
                     }
             }
             .listStyle(.plain)
+            .overlay {
+                if displayedTransactions.isEmpty && !searchText.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
+                }
+            }
         }
+        .searchable(text: $searchText, placement: .toolbar, prompt: "Search description\u{2026}")
         .navigationTitle("Transactions")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -117,7 +130,7 @@ public struct TransactionsView: View {
                 .onChange(of: filter.includeUncategorizedOnly) { _, _ in reload() }
 
             Spacer()
-            Text("\(transactions.count) shown").foregroundStyle(.secondary)
+            Text("\(displayedTransactions.count) shown \(searchText.isEmpty ? "" : "of \(transactions.count)")").foregroundStyle(.secondary)
         }
     }
 

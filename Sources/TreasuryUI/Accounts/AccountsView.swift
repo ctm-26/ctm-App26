@@ -6,6 +6,7 @@ import TreasuryKernel
 public struct AccountsView: View {
     @Environment(AppState.self) private var state
     @State private var accounts: [Account] = []
+    @State private var balances: [Int64: Money] = [:]
     @State private var showingAdd = false
     @State private var newName = ""
     @State private var newType: String = "checking"
@@ -24,6 +25,13 @@ public struct AccountsView: View {
                         Text(a.type).font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text((balances[a.id] ?? .zero).formatted())
+                            .font(.body.monospacedDigit())
+                            .foregroundStyle((balances[a.id] ?? .zero).cents >= 0
+                                             ? Theme.incomeColor : Theme.spendingColor)
+                        Text("balance").font(.caption2).foregroundStyle(.tertiary)
+                    }
                     Text(a.createdAt).font(.caption2).foregroundStyle(.tertiary)
                 }
                 .padding(.vertical, 4)
@@ -49,8 +57,11 @@ public struct AccountsView: View {
         .sheet(isPresented: $showingAdd) { addSheet }
         .refreshable {
             do {
-                let rows = try await state.ledger.accounts()
-                self.accounts = rows
+                async let accounts = state.ledger.accounts()
+                async let balances = state.ledger.accountBalances()
+                let (a, b) = try await (accounts, balances)
+                self.accounts = a
+                self.balances = b
                 self.isLoading = false
             } catch {
                 state.lastError = "\(error)"
@@ -91,8 +102,13 @@ public struct AccountsView: View {
 
     private func reload() {
         isLoading = true
-        state.task({ try await state.ledger.accounts() }) { rows in
-            self.accounts = rows
+        state.task({
+            async let accounts = state.ledger.accounts()
+            async let balances = state.ledger.accountBalances()
+            return try await (accounts, balances)
+        }) { (a, b) in
+            self.accounts = a
+            self.balances = b
             self.isLoading = false
         }
     }

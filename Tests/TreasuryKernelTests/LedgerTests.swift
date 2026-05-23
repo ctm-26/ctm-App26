@@ -65,4 +65,42 @@ final class LedgerTests: XCTestCase {
         XCTAssertEqual(r.spending.cents, -42_18 - 38_40 - 15_99)
         XCTAssertEqual(r.byCategory.count, 4)
     }
+
+    func testAccountBalances() async throws {
+        let db = try await makeDB()
+        let ledger = LedgerService(db: db)
+        let importer = ImportService(db: db)
+
+        let accountA = try await ledger.addAccount(name: "Acct A", type: "checking")
+        let accountB = try await ledger.addAccount(name: "Acct B", type: "savings")
+        // Third account: no transactions at all.
+        let accountC = try await ledger.addAccount(name: "Acct C", type: "cash")
+
+        // Account A: +100.00, -42.18, -7.50 → 50.32 = 5032 cents.
+        let csvA = """
+        Date,Description,Amount
+        2026-05-01,DEPOSIT,100.00
+        2026-05-02,SHOPRITE,-42.18
+        2026-05-03,COFFEE,-7.50
+        """
+        let resA = try await importer.importCSV(
+            csvA, sourceName: "a.csv", accountName: "Acct A")
+        XCTAssertEqual(resA.inserted, 3)
+
+        // Account B: +25.00 → 2500 cents.
+        let csvB = """
+        Date,Description,Amount
+        2026-05-04,REBATE,25.00
+        """
+        let resB = try await importer.importCSV(
+            csvB, sourceName: "b.csv", accountName: "Acct B")
+        XCTAssertEqual(resB.inserted, 1)
+
+        let balances = try await ledger.accountBalances()
+        XCTAssertEqual(balances[accountA.id]?.cents, 5032)
+        XCTAssertEqual(balances[accountB.id]?.cents, 2500)
+        // Zero-transaction account still appears with Money.zero.
+        XCTAssertEqual(balances[accountC.id], Money.zero)
+        XCTAssertEqual(balances[accountC.id]?.cents, 0)
+    }
 }

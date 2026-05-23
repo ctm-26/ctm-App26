@@ -3,6 +3,8 @@ import Observation
 import TreasuryKernel
 import TreasuryTrading
 
+#if canImport(UIKit)
+
 @MainActor
 @Observable
 public final class AppState {
@@ -18,6 +20,11 @@ public final class AppState {
     public var engine: TradingEngine?
     public var currentPortfolio: PortfolioStore.PortfolioRow?
     public var lastError: String?
+
+    /// User-preferred currency code passed to `Money.formatted(currencyCode:)`
+    /// at the visible call sites (dashboard summary, account table, reports,
+    /// backtest equity readout). Default keeps existing behavior (USD).
+    public var preferredCurrencyCode: String = "USD"
 
     public init(db: LedgerDatabase, feed: any PriceFeed = CoinbasePriceFeed()) {
         self.db = db
@@ -63,3 +70,5 @@ public final class AppState {
         return dir.appendingPathComponent("treasury.db")
     }
 }
+
+#endif

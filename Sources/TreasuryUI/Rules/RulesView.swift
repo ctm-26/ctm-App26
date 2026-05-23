@@ -1,6 +1,8 @@
 import SwiftUI
 import TreasuryKernel
 
+#if canImport(UIKit)
+
 public struct RulesView: View {
     @Environment(AppState.self) private var state
     @State private var rules: [Rule] = []
@@ -45,6 +47,7 @@ public struct RulesView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { showAdd = true } label: { Label("Add", systemImage: "plus") }
+                    .keyboardShortcut("n", modifiers: .command)
             }
             ToolbarItem(placement: .secondaryAction) {
                 Button {
@@ -53,6 +56,15 @@ public struct RulesView: View {
             }
         }
         .sheet(isPresented: $showAdd) { addSheet }
+        .refreshable {
+            do {
+                let rows = try await state.rules.rules()
+                self.rules = rows
+                self.isLoading = false
+            } catch {
+                state.lastError = "\(error)"
+            }
+        }
         .task { reload() }
     }
 
@@ -103,3 +115,5 @@ public struct RulesView: View {
         }
     }
 }
+
+#endif

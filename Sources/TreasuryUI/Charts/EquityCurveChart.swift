@@ -3,6 +3,8 @@ import Charts
 import TreasuryKernel
 import TreasuryTrading
 
+#if canImport(UIKit)
+
 public enum EquityVisual: String, CaseIterable, Hashable {
     case equity = "Equity"
     case drawdown = "Drawdown"
@@ -187,3 +189,5 @@ extension EquityCurveChart: AXChartDescriptorRepresentable {
         )
     }
 }
+
+#endif

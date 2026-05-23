@@ -1,6 +1,8 @@
 import SwiftUI
 import TreasuryKernel
 
+#if canImport(UIKit)
+
 public struct AccountsView: View {
     @Environment(AppState.self) private var state
     @State private var accounts: [Account] = []
@@ -85,3 +87,5 @@ public struct AccountsView: View {
         }
     }
 }
+
+#endif

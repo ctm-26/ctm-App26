@@ -3,6 +3,8 @@ import Charts
 import TreasuryKernel
 import TreasuryTrading
 
+#if canImport(UIKit)
+
 public enum PriceVisual: String, CaseIterable, Hashable {
     case candles = "Candles"
     case line = "Line"
@@ -178,3 +180,5 @@ extension PriceChart: AXChartDescriptorRepresentable {
         )
     }
 }
+
+#endif

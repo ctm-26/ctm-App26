@@ -1,6 +1,8 @@
 import SwiftUI
 import TreasuryKernel
 
+#if canImport(UIKit)
+
 public enum SidebarSection: String, CaseIterable, Identifiable, Hashable {
     case dashboard, accounts, transactions, rules, reports, tradingLab, audit
     public var id: String { rawValue }
@@ -88,3 +90,5 @@ public struct RootView: View {
         }
     }
 }
+
+#endif

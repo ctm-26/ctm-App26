@@ -165,4 +165,91 @@ public struct LedgerService: Sendable {
             bind: { dbi, stmt in dbi.bindInt(stmt, 1, id) })
         try await db.appendAudit(action: "tx.delete", details: "id=\(id)")
     }
+
+    /// Insert a manual transaction (no import batch).
+    ///
+    /// Throws:
+    ///   * `.validation` for empty/invalid date, empty description, or a UNIQUE
+    ///     collision with an existing row (same account/date/description/amount).
+    ///   * `.notFound` if `accountId` does not exist.
+    public func addTransaction(
+        accountId: Int64,
+        date: String,
+        description: String,
+        amount: Money,
+        categoryId: Int64? = nil
+    ) async throws -> LedgerTransaction {
+        guard let normalizedDate = DateNormalizer.normalize(date) else {
+            throw TreasuryError.validation("invalid date '\(date)'")
+        }
+        let trimmedDesc = description.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedDesc.isEmpty else {
+            throw TreasuryError.validation("empty description")
+        }
+
+        // Verify the account exists. Return it so we can use its name in the
+        // hydrated `LedgerTransaction`.
+        guard let account = try await db.queryOne(
+            "SELECT id, name, type, created_at FROM accounts WHERE id = ? LIMIT 1;",
+            bind: { dbi, stmt in dbi.bindInt(stmt, 1, accountId) },
+            map: { dbi, stmt in
+                Account(
+                    id: sqlite3_column_int64(stmt, 0),
+                    name: dbi.text(stmt, 1),
+                    type: dbi.text(stmt, 2),
+                    createdAt: dbi.text(stmt, 3))
+            })
+        else {
+            throw TreasuryError.notFound("account id \(accountId)")
+        }
+
+        // Resolve category name if a category id is provided.
+        var resolvedCategoryName: String? = nil
+        if let cid = categoryId {
+            resolvedCategoryName = try await db.queryOne(
+                "SELECT name FROM categories WHERE id = ? LIMIT 1;",
+                bind: { dbi, stmt in dbi.bindInt(stmt, 1, cid) },
+                map: { dbi, stmt in dbi.text(stmt, 0) })
+        }
+
+        // Insert (no OR IGNORE: a hard duplicate should surface to the UI).
+        let newId: Int64
+        do {
+            newId = try await db.insert("""
+                INSERT INTO transactions
+                (account_id, date, description, amount_cents, category_id, import_batch_id)
+                VALUES(?, ?, ?, ?, ?, NULL);
+                """, bind: { dbi, stmt in
+                dbi.bindInt(stmt, 1, account.id)
+                dbi.bindText(stmt, 2, normalizedDate)
+                dbi.bindText(stmt, 3, trimmedDesc)
+                dbi.bindInt(stmt, 4, amount.cents)
+                dbi.bindInt(stmt, 5, categoryId)
+            })
+        } catch let TreasuryError.sqlite(msg) {
+            // sqlite3 surfaces UNIQUE constraint failures via sqlite3_errmsg with
+            // a "constraint" / "UNIQUE" string. Translate to a validation error
+            // so the UI can show a clean message.
+            let lower = msg.lowercased()
+            if lower.contains("unique") || lower.contains("constraint") {
+                throw TreasuryError.validation(
+                    "duplicate: same account/date/description/amount already exists")
+            }
+            throw TreasuryError.sqlite(msg)
+        }
+
+        try await db.appendAudit(
+            action: "tx.add",
+            details: "account=\(account.id) date=\(normalizedDate) amount=\(amount.cents)")
+
+        return LedgerTransaction(
+            id: newId,
+            accountId: account.id,
+            accountName: account.name,
+            date: normalizedDate,
+            description: trimmedDesc,
+            amount: amount,
+            categoryId: categoryId,
+            categoryName: resolvedCategoryName)
+    }
 }

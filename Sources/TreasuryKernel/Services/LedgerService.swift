@@ -48,6 +48,25 @@ public struct LedgerService: Sendable {
         }
     }
 
+    /// Per-account current balance, computed as SUM(amount_cents) across all
+    /// transactions in that account. Returns Money(cents: 0) for accounts with
+    /// no transactions. Read-only — no audit row is appended.
+    public func accountBalances() async throws -> [Int64: Money] {
+        let rows = try await db.query("""
+            SELECT a.id, COALESCE(SUM(t.amount_cents), 0)
+            FROM accounts a
+            LEFT JOIN transactions t ON t.account_id = a.id
+            GROUP BY a.id;
+            """) { _, stmt in
+            (sqlite3_column_int64(stmt, 0),
+             Money(cents: sqlite3_column_int64(stmt, 1)))
+        }
+        var out: [Int64: Money] = [:]
+        out.reserveCapacity(rows.count)
+        for (id, m) in rows { out[id] = m }
+        return out
+    }
+
     // MARK: - Categories
 
     public func categories() async throws -> [Category] {

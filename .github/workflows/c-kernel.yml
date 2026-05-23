@@ -1,0 +1,37 @@
+name: "ci: c-kernel"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "TreasuryKernelCLI/**"
+      - ".github/workflows/c-kernel.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "TreasuryKernelCLI/**"
+      - ".github/workflows/c-kernel.yml"
+
+jobs:
+  build-and-test:
+    name: build + test (release + sanitizers)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install libsqlite3-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlite3-dev
+
+      - name: Build (release)
+        run: make -C TreasuryKernelCLI
+
+      - name: Test (release)
+        run: make -C TreasuryKernelCLI test
+
+      - name: Build + test (debug with ASan + UBSan)
+        run: |
+          make -C TreasuryKernelCLI debug
+          make -C TreasuryKernelCLI test

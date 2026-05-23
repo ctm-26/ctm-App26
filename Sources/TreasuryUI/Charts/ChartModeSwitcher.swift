@@ -1,5 +1,7 @@
 import SwiftUI
 
+#if canImport(UIKit)
+
 /// Reusable picker for switching between visualizations of the same dataset.
 /// The pattern is consistent across Dashboard, Reports, and the Trading Lab.
 public struct ChartModeSwitcher<Mode: Hashable & CaseIterable & RawRepresentable>: View
@@ -24,3 +26,5 @@ where Mode.RawValue == String, Mode.AllCases: RandomAccessCollection
         .accessibilityLabel("Chart visualization mode")
     }
 }
+
+#endif

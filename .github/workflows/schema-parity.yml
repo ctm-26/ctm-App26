@@ -1,0 +1,107 @@
+name: "ci: schema-parity"
+
+on:
+  pull_request:
+    paths:
+      - "TreasuryKernelCLI/src/db.c"
+      - "Sources/TreasuryKernel/Schema.swift"
+      - ".github/workflows/schema-parity.yml"
+
+jobs:
+  parity:
+    name: shared schema matches across C and Swift
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compare shared schema (ignore paper_* tables)
+        shell: python3 {0}
+        run: |
+          import re, sys
+
+          C_PATH = "TreasuryKernelCLI/src/db.c"
+          SW_PATH = "Sources/TreasuryKernel/Schema.swift"
+
+          def strip_c_string_literals(text):
+              # Concatenate C string literal fragments like "..." "..." into one
+              # logical SQL blob. We pull out everything between double quotes,
+              # un-escape \n, and join.
+              parts = re.findall(r'"((?:\\.|[^"\\])*)"', text)
+              joined = "".join(p.encode("utf-8").decode("unicode_escape") for p in parts)
+              return joined
+
+          def strip_swift_string_literals(text):
+              # Schema.swift uses Swift multi-line string literals delimited by
+              # triple double-quotes. Pull all of them out and concatenate.
+              parts = re.findall(r'"""(.*?)"""', text, flags=re.DOTALL)
+              return "\n".join(parts)
+
+          def extract_statements(sql_blob):
+              # Find every CREATE TABLE / CREATE INDEX statement (terminated by
+              # the matching ';'), normalize whitespace, drop "IF NOT EXISTS".
+              pattern = re.compile(
+                  r'(CREATE\s+(?:TABLE|INDEX)\b[^;]*;)',
+                  flags=re.IGNORECASE | re.DOTALL,
+              )
+              out = []
+              for raw in pattern.findall(sql_blob):
+                  s = re.sub(r'\s+', ' ', raw).strip()
+                  s = re.sub(r'\bIF\s+NOT\s+EXISTS\s+', '', s, flags=re.IGNORECASE)
+                  # Normalize whitespace around punctuation so cosmetic spacing
+                  # like " );" vs ");" doesn't trigger a false mismatch.
+                  s = re.sub(r'\s*([(),;])\s*', r'\1', s)
+                  out.append(s)
+              return out
+
+          def object_name(stmt):
+              # Extract the table/index name so we can pair statements up and
+              # know which ones are paper_* (Swift-only) to skip.
+              m = re.match(
+                  r'CREATE\s+(?:TABLE|INDEX)\s+([A-Za-z_][A-Za-z0-9_]*)',
+                  stmt,
+                  flags=re.IGNORECASE,
+              )
+              return m.group(1) if m else ""
+
+          with open(C_PATH) as f:
+              c_sql = strip_c_string_literals(f.read())
+          with open(SW_PATH) as f:
+              sw_sql = strip_swift_string_literals(f.read())
+
+          c_stmts = {object_name(s): s for s in extract_statements(c_sql)}
+          sw_stmts = {object_name(s): s for s in extract_statements(sw_sql)}
+
+          # Swift schema legitimately has paper_* objects (and an index on them).
+          sw_shared = {
+              name: stmt for name, stmt in sw_stmts.items()
+              if not name.startswith("paper_") and not name.startswith("idx_paper_")
+          }
+
+          errors = []
+
+          missing_in_swift = sorted(set(c_stmts) - set(sw_shared))
+          missing_in_c = sorted(set(sw_shared) - set(c_stmts))
+          if missing_in_swift:
+              errors.append(f"Objects in C but missing in Swift: {missing_in_swift}")
+          if missing_in_c:
+              errors.append(f"Objects in Swift but missing in C: {missing_in_c}")
+
+          for name in sorted(set(c_stmts) & set(sw_shared)):
+              if c_stmts[name] != sw_shared[name]:
+                  errors.append(
+                      f"--- Object '{name}' differs ---\n"
+                      f"C:     {c_stmts[name]}\n"
+                      f"Swift: {sw_shared[name]}"
+                  )
+
+          if errors:
+              print("Schema parity check FAILED:\n")
+              for e in errors:
+                  print(e)
+                  print()
+              sys.exit(1)
+
+          print(f"Schema parity OK. Shared objects ({len(c_stmts)}):")
+          for name in sorted(c_stmts):
+              print(f"  - {name}")

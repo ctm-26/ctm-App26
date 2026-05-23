@@ -100,7 +100,7 @@ is the first thing to read.
 ## Build and test
 
 ```bash
-cd TreasuryKernel
+cd TreasuryKernelCLI
 make            # builds ./treasury
 make test       # runs end-to-end CLI tests
 make debug      # rebuilds with ASan + UBSan

@@ -2,6 +2,8 @@ import SwiftUI
 import TreasuryKernel
 import TreasuryTrading
 
+#if canImport(UIKit)
+
 /// Lightweight, picker-friendly choice for the risk governor preset.
 /// Translated to `RiskGovernor.Config` only at submission time.
 private enum GovProfile: String, CaseIterable, Hashable {
@@ -38,6 +40,8 @@ public struct BacktestView: View {
     @State private var candles: [Candle] = []
     @State private var result: BacktestResult?
     @State private var running = false
+    @State private var runCompletionTrigger: Int = 0
+    @State private var runErrorTrigger: Int = 0
 
     private let strategies = StrategyCatalog.all()
 
@@ -60,6 +64,8 @@ public struct BacktestView: View {
             }
             .padding(24)
         }
+        .sensoryFeedback(.success, trigger: runCompletionTrigger)
+        .sensoryFeedback(.error, trigger: runErrorTrigger)
     }
 
     private var controls: some View {
@@ -116,7 +122,7 @@ public struct BacktestView: View {
                 stat("Trades", "\(s.tradeCount)", Theme.neutralColor)
                 stat("Win rate", String(format: "%.0f%%", s.winRate * 100), Theme.neutralColor)
                 stat("Sharpe", String(format: "%.2f", s.sharpe), Theme.neutralColor)
-                stat("Final", s.finalEquity.formatted(),
+                stat("Final", s.finalEquity.formatted(currencyCode: state.preferredCurrencyCode),
                      s.finalEquity.cents >= s.initialEquity.cents
                      ? Theme.incomeColor : Theme.spendingColor)
             }
@@ -176,18 +182,26 @@ public struct BacktestView: View {
         let lookback = lookbackDays
         let cash = Int64(initialCashDollars * 100)
         let gov = govProfile.config
-        state.task({
-            let end = Date()
-            let start = end.addingTimeInterval(-TimeInterval(lookback * 86400))
-            let cs = try await state.feed.candles(symbol: sym, granularity: g,
-                                                  start: start, end: end)
-            let bt = Backtester(strategy: strategy, symbol: sym,
-                                initialCashCents: cash, governorConfig: gov)
-            return (cs, bt.run(candles: cs))
-        }) { (cs, r) in
-            self.candles = cs
-            self.result = r
-            self.running = false
+        Task { @MainActor in
+            do {
+                let end = Date()
+                let start = end.addingTimeInterval(-TimeInterval(lookback * 86400))
+                let cs = try await state.feed.candles(symbol: sym, granularity: g,
+                                                      start: start, end: end)
+                let bt = Backtester(strategy: strategy, symbol: sym,
+                                    initialCashCents: cash, governorConfig: gov)
+                let r = bt.run(candles: cs)
+                self.candles = cs
+                self.result = r
+                self.running = false
+                self.runCompletionTrigger &+= 1
+            } catch {
+                state.lastError = "\(error)"
+                self.running = false
+                self.runErrorTrigger &+= 1
+            }
         }
     }
 }
+
+#endif

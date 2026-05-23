@@ -2,6 +2,8 @@ import SwiftUI
 import Charts
 import TreasuryKernel
 
+#if canImport(UIKit)
+
 public enum SpendVisual: String, CaseIterable, Hashable {
     case donut = "Donut"
     case bars = "Bars"
@@ -12,6 +14,9 @@ public struct SpendByCategoryChart: View {
     public let rollups: [CategoryRollup]
     @Binding public var visual: SpendVisual
     @State private var measuredWidth: CGFloat = 0
+    /// Only used by the `.bars` mode — a tapped category gets highlighted while
+    /// the rest fade. Donut / stack don't use this.
+    @State private var highlighted: String?
 
     public init(rollups: [CategoryRollup], visual: Binding<SpendVisual>) {
         self.rollups = rollups; self._visual = visual
@@ -46,6 +51,11 @@ public struct SpendByCategoryChart: View {
         }
     }
 
+    private func opacity(for name: String) -> Double {
+        guard let h = highlighted else { return 1.0 }
+        return h == name ? 1.0 : 0.25
+    }
+
     @ViewBuilder
     private var chart: some View {
         if spendRows.isEmpty {
@@ -65,6 +75,7 @@ public struct SpendByCategoryChart: View {
                     .foregroundStyle(by: .value("cat", row.name))
                 }
                 .chartLegend(position: .bottom, alignment: .center, spacing: 10)
+                .accessibilityChartDescriptor(self)
             case .bars:
                 Chart(spendRows) { row in
                     BarMark(
@@ -72,6 +83,7 @@ public struct SpendByCategoryChart: View {
                         y: .value("cat", row.name)
                     )
                     .foregroundStyle(by: .value("cat", row.name))
+                    .opacity(opacity(for: row.name))
                     .annotation(position: .trailing) {
                         Text(row.amount.formatted())
                             .font(.caption2)
@@ -79,6 +91,24 @@ public struct SpendByCategoryChart: View {
                     }
                 }
                 .chartLegend(.hidden)
+                .accessibilityChartDescriptor(self)
+                .chartOverlay { proxy in
+                    GeometryReader { geo in
+                        Rectangle().fill(.clear).contentShape(Rectangle())
+                            .onTapGesture { location in
+                                guard let plotFrame = proxy.plotFrame else { return }
+                                let frame = geo[plotFrame]
+                                let local = CGPoint(x: location.x - frame.minX,
+                                                    y: location.y - frame.minY)
+                                guard local.y >= 0, local.y <= frame.height else { return }
+                                if let tapped: String = proxy.value(atY: local.y) {
+                                    withAnimation(.snappy) {
+                                        highlighted = (highlighted == tapped) ? nil : tapped
+                                    }
+                                }
+                            }
+                    }
+                }
             case .stack:
                 Chart(spendRows) { row in
                     BarMark(
@@ -88,7 +118,51 @@ public struct SpendByCategoryChart: View {
                     .foregroundStyle(by: .value("cat", row.name))
                 }
                 .chartLegend(position: .bottom)
+                .accessibilityChartDescriptor(self)
             }
         }
     }
 }
+
+extension SpendByCategoryChart: AXChartDescriptorRepresentable {
+    public func makeChartDescriptor() -> AXChartDescriptor {
+        let rows = spendRows
+        let categories = rows.map(\.name)
+        let amounts = rows.map { $0.amount.doubleValue }
+
+        let xAxis = AXCategoricalDataAxisDescriptor(
+            title: "Category",
+            categoryOrder: categories
+        )
+
+        let maxA = amounts.max() ?? 1
+        let yAxis = AXNumericDataAxisDescriptor(
+            title: "Amount (USD)",
+            range: 0 ... max(maxA, 1),
+            gridlinePositions: []
+        ) { value in
+            Money(cents: Int64(value * 100)).formatted()
+        }
+
+        let series = AXDataSeriesDescriptor(
+            name: "Spending",
+            isContinuous: false,
+            dataPoints: rows.map { r in
+                AXDataPoint(x: r.name,
+                            y: r.amount.doubleValue,
+                            label: "\(r.name): \(r.amount.formatted()) across \(r.count) transactions")
+            }
+        )
+
+        return AXChartDescriptor(
+            title: "Spending by category",
+            summary: "Total amount spent in each category for the current period.",
+            xAxis: xAxis,
+            yAxis: yAxis,
+            additionalAxes: [],
+            series: [series]
+        )
+    }
+}
+
+#endif

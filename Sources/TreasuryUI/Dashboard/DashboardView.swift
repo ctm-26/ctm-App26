@@ -1,6 +1,8 @@
 import SwiftUI
 import TreasuryKernel
 
+#if canImport(UIKit)
+
 public enum DashboardLens: String, CaseIterable, Hashable {
     case spend = "Spend"
     case timeline = "Timeline"
@@ -65,6 +67,21 @@ public struct DashboardView: View {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
                 .disabled(loading)
+                .keyboardShortcut("r", modifiers: .command)
+            }
+        }
+        .refreshable {
+            let m = month
+            do {
+                let newReport = try await state.reports.monthly(m)
+                let newDaily = try await state.reports.dailyCumulative(months: 12)
+                let newMonthly = try await state.reports.months(last: 6)
+                self.report = newReport
+                self.dailyPoints = newDaily
+                self.monthly = newMonthly
+                self.loading = false
+            } catch {
+                state.lastError = "\(error)"
             }
         }
         .task { reload() }
@@ -91,23 +108,24 @@ public struct DashboardView: View {
         let netTint: Color = net.cents >= 0 ? Theme.incomeColor : Theme.spendingColor
         let txCount = report?.transactionCount ?? 0
 
+        let code = state.preferredCurrencyCode
         if hSizeClass == .compact {
             // 2x2 grid on compact width (e.g. portrait iPhone / Slide Over iPad).
             Grid(horizontalSpacing: 16, verticalSpacing: 16) {
                 GridRow {
-                    metricCard("Income", income.formatted(), Theme.incomeColor)
-                    metricCard("Spending", spend.formatted(), Theme.spendingColor)
+                    metricCard("Income", income.formatted(currencyCode: code), Theme.incomeColor)
+                    metricCard("Spending", spend.formatted(currencyCode: code), Theme.spendingColor)
                 }
                 GridRow {
-                    metricCard("Net", net.formatted(), netTint)
+                    metricCard("Net", net.formatted(currencyCode: code), netTint)
                     metricCard("Transactions", "\(txCount)", Theme.neutralColor)
                 }
             }
         } else {
             HStack(spacing: 16) {
-                metricCard("Income", income.formatted(), Theme.incomeColor)
-                metricCard("Spending", spend.formatted(), Theme.spendingColor)
-                metricCard("Net", net.formatted(), netTint)
+                metricCard("Income", income.formatted(currencyCode: code), Theme.incomeColor)
+                metricCard("Spending", spend.formatted(currencyCode: code), Theme.spendingColor)
+                metricCard("Net", net.formatted(currencyCode: code), netTint)
                 metricCard("Transactions", "\(txCount)", Theme.neutralColor)
             }
         }
@@ -134,7 +152,7 @@ public struct DashboardView: View {
                         ForEach(rows) { r in
                             GridRow {
                                 Text(r.name).bold()
-                                Text(r.net.formatted())
+                                Text(r.net.formatted(currencyCode: state.preferredCurrencyCode))
                                     .foregroundStyle(r.net.cents >= 0
                                                      ? Theme.incomeColor : Theme.spendingColor)
                                     .monospacedDigit()
@@ -194,3 +212,5 @@ private struct MonthStepper: View {
         month = f.string(from: next); onChange()
     }
 }
+
+#endif

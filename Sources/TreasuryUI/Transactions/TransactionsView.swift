@@ -2,6 +2,8 @@ import SwiftUI
 import TreasuryKernel
 import UniformTypeIdentifiers
 
+#if canImport(UIKit)
+
 public struct TransactionsView: View {
     @Environment(AppState.self) private var state
     @State private var transactions: [LedgerTransaction] = []
@@ -40,6 +42,7 @@ public struct TransactionsView: View {
                 Button { showImport = true } label: {
                     Label("Import CSV", systemImage: "square.and.arrow.down")
                 }
+                .keyboardShortcut("i", modifiers: .command)
             }
             ToolbarItem(placement: .secondaryAction) {
                 Button { state.task({ _ = try await state.rules.classifyAll() }) { _ in reload() } }
@@ -60,6 +63,19 @@ public struct TransactionsView: View {
                 onCancel: { recategorizeTarget = nil }
             )
             .presentationDetents([.medium])
+        }
+        .refreshable {
+            let f = filter
+            do {
+                let t = try await state.ledger.transactions(filter: f)
+                let a = try await state.ledger.accounts()
+                let c = try await state.ledger.categories()
+                self.transactions = t
+                self.accounts = a
+                self.categories = c
+            } catch {
+                state.lastError = "\(error)"
+            }
         }
         .task { reload(); reloadAccounts(); reloadCategories() }
     }
@@ -197,9 +213,7 @@ fileprivate struct RecategorizeSheet: View {
                 }
             }
             .navigationTitle("Recategorize")
-            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { onCancel() }
@@ -236,3 +250,5 @@ private struct TransactionRow: View {
         .padding(.vertical, 6)
     }
 }
+
+#endif

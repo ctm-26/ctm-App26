@@ -2,6 +2,8 @@ import SwiftUI
 import TreasuryKernel
 import TreasuryTrading
 
+#if canImport(UIKit)
+
 public struct TradeHistoryView: View {
     @Environment(AppState.self) private var state
     @State private var portfolios: [PortfolioStore.PortfolioRow] = []
@@ -71,3 +73,5 @@ public struct TradeHistoryView: View {
         }
     }
 }
+
+#endif

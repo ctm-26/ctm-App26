@@ -1,6 +1,8 @@
 import SwiftUI
 import TreasuryKernel
 
+#if canImport(UIKit)
+
 public struct ReportsView: View {
     @Environment(AppState.self) private var state
     @State private var month: String = currentMonth()
@@ -130,3 +132,5 @@ public struct ReportsView: View {
         return f.string(from: Date())
     }
 }
+
+#endif

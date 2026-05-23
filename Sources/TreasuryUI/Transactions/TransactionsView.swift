@@ -2,6 +2,8 @@ import SwiftUI
 import TreasuryKernel
 import UniformTypeIdentifiers
 
+#if canImport(UIKit)
+
 public struct TransactionsView: View {
     @Environment(AppState.self) private var state
     @State private var transactions: [LedgerTransaction] = []
@@ -197,9 +199,7 @@ fileprivate struct RecategorizeSheet: View {
                 }
             }
             .navigationTitle("Recategorize")
-            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { onCancel() }
@@ -236,3 +236,5 @@ private struct TransactionRow: View {
         .padding(.vertical, 6)
     }
 }
+
+#endif

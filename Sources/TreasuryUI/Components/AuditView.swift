@@ -1,6 +1,8 @@
 import SwiftUI
 import TreasuryKernel
 
+#if canImport(UIKit)
+
 public struct AuditView: View {
     @Environment(AppState.self) private var state
     @State private var events: [AuditEvent] = []
@@ -138,3 +140,5 @@ public struct AuditView: View {
         }
     }
 }
+
+#endif

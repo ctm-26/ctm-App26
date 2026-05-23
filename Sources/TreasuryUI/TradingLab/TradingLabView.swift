@@ -2,6 +2,8 @@ import SwiftUI
 import TreasuryKernel
 import TreasuryTrading
 
+#if canImport(UIKit)
+
 public enum TradingLens: String, CaseIterable, Hashable {
     case backtest = "Backtest"
     case paper = "Paper"
@@ -77,3 +79,5 @@ public struct TradingLabView: View {
         }
     }
 }
+
+#endif

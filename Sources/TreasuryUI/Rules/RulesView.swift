@@ -1,6 +1,8 @@
 import SwiftUI
 import TreasuryKernel
 
+#if canImport(UIKit)
+
 public struct RulesView: View {
     @Environment(AppState.self) private var state
     @State private var rules: [Rule] = []
@@ -103,3 +105,5 @@ public struct RulesView: View {
         }
     }
 }
+
+#endif

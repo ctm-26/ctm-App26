@@ -7,8 +7,15 @@ public struct TradeHistoryView: View {
     @State private var portfolios: [PortfolioStore.PortfolioRow] = []
     @State private var selectedId: Int64?
     @State private var trades: [PortfolioStore.TradeRow] = []
+    @State private var exportTarget: ExportableURL?
 
     public init() {}
+
+    /// Wrapper so `URL` can be used with `sheet(item:)` which requires Identifiable.
+    private struct ExportableURL: Identifiable {
+        let id = UUID()
+        let url: URL
+    }
 
     public var body: some View {
         VStack(alignment: .leading) {
@@ -50,6 +57,24 @@ public struct TradeHistoryView: View {
                 }
             }
         }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { exportCurrentPortfolio() } label: {
+                    Label("Export CSV", systemImage: "square.and.arrow.up")
+                }
+                .disabled(selectedId == nil)
+            }
+        }
+        .sheet(item: $exportTarget) { target in
+            NavigationStack {
+                ShareLink(item: target.url) {
+                    Label("Share \(target.url.lastPathComponent)",
+                          systemImage: "square.and.arrow.up")
+                }
+                .padding()
+            }
+            .presentationDetents([.medium])
+        }
         .task { reloadPortfolios() }
     }
 
@@ -68,6 +93,20 @@ public struct TradeHistoryView: View {
             }
         } else {
             trades = []
+        }
+    }
+
+    private func exportCurrentPortfolio() {
+        guard let pid = selectedId else { return }
+        state.task({
+            try await state.portfolios.exportTradesCSV(portfolioId: pid)
+        }) { csv in
+            let ts = ISO8601DateFormatter().string(from: Date())
+                .replacingOccurrences(of: ":", with: "-")
+            let url = FileManager.default.temporaryDirectory
+                .appendingPathComponent("paper-trades-\(pid)-\(ts).csv")
+            try? csv.write(to: url, atomically: true, encoding: .utf8)
+            self.exportTarget = ExportableURL(url: url)
         }
     }
 }

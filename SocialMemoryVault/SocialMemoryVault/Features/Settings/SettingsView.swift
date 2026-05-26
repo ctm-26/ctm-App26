@@ -32,6 +32,13 @@ struct SettingsView: View {
                             .foregroundStyle(.primary)
                     }
 
+                    NavigationLink {
+                        DataHealthView()
+                    } label: {
+                        Label("Data Health", systemImage: "stethoscope")
+                            .foregroundStyle(.primary)
+                    }
+
                     Button(role: .destructive) {
                         showDeleteAllConfirmation = true
                     } label: {

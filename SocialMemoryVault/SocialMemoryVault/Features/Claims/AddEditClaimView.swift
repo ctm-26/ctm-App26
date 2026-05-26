@@ -34,6 +34,15 @@ struct AddEditClaimView: View {
     @State private var validationErrors: [String] = []
     @State private var showValidationAlert: Bool = false
 
+    // MARK: - Guard 1: Entity resolution on literal value field
+    @State private var valueEntitySuggestion: Entity? = nil
+    @State private var valueResolutionTask: Task<Void, Never>? = nil
+
+    // MARK: - Guard 5: Source memory reminder on save
+    @State private var showNoSourceWarning = false
+    @State private var showMemoryPicker = false
+    @State private var pendingCommitAfterMemoryPick = false
+
     @Query(sort: \Memory.createdAt, order: .reverse)
     private var allMemories: [Memory]
 
@@ -150,8 +159,24 @@ struct AddEditClaimView: View {
                         TextField("e.g. works_at, interested_in, owns…", text: $predicate)
                             .autocorrectionDisabled()
                             .autocapitalization(.none)
-                            .onChange(of: predicate) { _, _ in
-                                showPredicateSuggestions = !predicate.isEmpty
+                            .onChange(of: predicate) { _, newValue in
+                                showPredicateSuggestions = !newValue.isEmpty
+
+                                // Guard 2: Predicate-aware field selection
+                                let classification = PredicateClassificationService.classify(newValue)
+                                switch classification {
+                                case .entity:
+                                    if objectValue.isEmpty && selectedObjectEntity == nil {
+                                        objectMode = .entity
+                                        valueEntitySuggestion = nil
+                                    }
+                                case .literal:
+                                    if selectedObjectEntity == nil {
+                                        objectMode = .literal
+                                    }
+                                case .unknown:
+                                    break
+                                }
                             }
 
                         if showPredicateSuggestions && !filteredPredicateSuggestions.isEmpty {
@@ -195,10 +220,67 @@ struct AddEditClaimView: View {
                     }
                     .pickerStyle(.segmented)
                     .padding(.vertical, 4)
+                    .onChange(of: objectMode) { _, newMode in
+                        if newMode == .entity {
+                            valueEntitySuggestion = nil
+                        }
+                    }
 
                     if objectMode == .literal {
                         TextField("Value (e.g. a name, number, description)", text: $objectValue)
                             .autocorrectionDisabled()
+                            .onChange(of: objectValue) { _, newValue in
+                                // Guard 1: Entity resolution on literal value field
+                                valueResolutionTask?.cancel()
+                                if newValue.isEmpty {
+                                    valueEntitySuggestion = nil
+                                    return
+                                }
+                                guard newValue.count >= 2, selectedObjectEntity == nil else { return }
+                                valueResolutionTask = Task {
+                                    try? await Task.sleep(nanoseconds: 300_000_000)
+                                    guard !Task.isCancelled else { return }
+                                    let match = EntityResolutionService.findExactMatch(for: newValue, in: modelContext)
+                                    await MainActor.run {
+                                        valueEntitySuggestion = match
+                                    }
+                                }
+                            }
+
+                        // Guard 1: Inline suggestion banner
+                        if let suggestion = valueEntitySuggestion,
+                           selectedObjectEntity == nil,
+                           objectMode == .literal {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack(alignment: .top, spacing: 8) {
+                                    Image(systemName: "info.circle.fill")
+                                        .foregroundStyle(.accentColor)
+                                        .font(.subheadline)
+                                    Text("\"\(suggestion.canonicalName)\" already exists as a \(suggestion.entityTypeEnum.displayName). Link as entity instead of literal value?")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+
+                                HStack(spacing: 10) {
+                                    Button("Link as entity") {
+                                        objectMode = .entity
+                                        selectedObjectEntity = suggestion
+                                        objectValue = ""
+                                        valueEntitySuggestion = nil
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .controlSize(.small)
+
+                                    Button("Keep as text") {
+                                        valueEntitySuggestion = nil
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
                     } else {
                         if let objectEntity = selectedObjectEntity {
                             HStack {
@@ -298,6 +380,24 @@ struct AddEditClaimView: View {
             } message: {
                 Text(validationErrors.joined(separator: "\n"))
             }
+            .confirmationDialog("No Source Memory", isPresented: $showNoSourceWarning, titleVisibility: .visible) {
+                Button("Attach Memory") {
+                    showMemoryPicker = true
+                }
+                Button("Save Without Source") {
+                    commitSave()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This claim has no source memory. Claims with evidence are easier to verify later. Attach one?")
+            }
+            .sheet(isPresented: $showMemoryPicker) {
+                MemoryPickerView(
+                    subjectEntityId: selectedSubject?.id,
+                    sourceMemoryId: $sourceMemoryId,
+                    onSelect: { commitSave() }
+                )
+            }
             .onAppear { prefill() }
         }
     }
@@ -325,7 +425,11 @@ struct AddEditClaimView: View {
     private func save() {
         let subjectId = selectedSubject?.id ?? ""
         let objectEntityId = objectMode == .entity ? selectedObjectEntity?.id : nil
-        let literalValue = objectMode == .literal ? (objectValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : objectValue.trimmingCharacters(in: .whitespacesAndNewlines)) : nil
+        let literalValue = objectMode == .literal
+            ? (objectValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? nil
+                : objectValue.trimmingCharacters(in: .whitespacesAndNewlines))
+            : nil
 
         let errors = Validation.validateClaim(
             subjectEntityId: subjectId,
@@ -339,6 +443,24 @@ struct AddEditClaimView: View {
             showValidationAlert = true
             return
         }
+
+        // Guard 5: Source memory reminder
+        if sourceMemoryId == nil && prefilledMemoryId == nil {
+            showNoSourceWarning = true
+            return
+        }
+
+        commitSave()
+    }
+
+    private func commitSave() {
+        let subjectId = selectedSubject?.id ?? ""
+        let objectEntityId = objectMode == .entity ? selectedObjectEntity?.id : nil
+        let literalValue = objectMode == .literal
+            ? (objectValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? nil
+                : objectValue.trimmingCharacters(in: .whitespacesAndNewlines))
+            : nil
 
         if let existing = existingClaim {
             existing.subjectEntityId = subjectId
@@ -392,6 +514,52 @@ private struct EntityPickerRow: View {
                 .font(.subheadline)
         }
         .contentShape(Rectangle())
+    }
+}
+
+private struct MemoryPickerView: View {
+    let subjectEntityId: String?
+    @Binding var sourceMemoryId: String?
+    let onSelect: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Memory.createdAt, order: .reverse) private var allMemories: [Memory]
+    @Query private var allLinks: [MemoryEntityLink]
+
+    private var filteredMemories: [Memory] {
+        guard let sid = subjectEntityId else { return Array(allMemories.prefix(30)) }
+        let linkedMemoryIds = Set(allLinks.filter { $0.entityId == sid }.map { $0.memoryId })
+        return allMemories.filter { linkedMemoryIds.contains($0.id) }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List(filteredMemories) { memory in
+                Button {
+                    sourceMemoryId = memory.id
+                    dismiss()
+                    onSelect()
+                } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(memory.body)
+                            .font(.subheadline)
+                            .lineLimit(3)
+                            .foregroundStyle(.primary)
+                        Text(DateUtils.display(memory.createdAt))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+            .navigationTitle("Select Memory")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
     }
 }
 

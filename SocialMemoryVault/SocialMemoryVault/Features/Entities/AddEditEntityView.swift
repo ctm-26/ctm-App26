@@ -16,6 +16,12 @@ struct AddEditEntityView: View {
     @State private var validationErrors: [String] = []
     @State private var isSaving = false
 
+    // MARK: - Guard 4: Notes-as-alias detector
+
+    @State private var showAliasPrompt = false
+    @State private var aliasPromptMessage = ""
+    @State private var pendingAliasSuggestion: String? = nil
+
     // MARK: - Init
 
     init(entity: Entity? = nil) {
@@ -110,6 +116,12 @@ struct AddEditEntityView: View {
                 }
             }
             .disabled(isSaving)
+            .confirmationDialog("Add as Alias?", isPresented: $showAliasPrompt, titleVisibility: .visible) {
+                Button("Yes — add alias and clear notes") { commitSave(addAlias: true) }
+                Button("No — keep in notes", role: .cancel) { commitSave(addAlias: false) }
+            } message: {
+                Text(aliasPromptMessage)
+            }
         }
     }
 
@@ -119,34 +131,67 @@ struct AddEditEntityView: View {
         let trimmedName = canonicalName.trimmingCharacters(in: .whitespaces)
         let trimmedNotes = notes.trimmingCharacters(in: .whitespaces)
 
-        let errors = Validation.validateEntity(
-            canonicalName: trimmedName,
-            entityType: selectedType.rawValue
-        )
-
-        guard errors.isEmpty else {
-            validationErrors = errors
-            return
-        }
+        let errors = Validation.validateEntity(canonicalName: trimmedName, entityType: selectedType.rawValue)
+        guard errors.isEmpty else { validationErrors = errors; return }
 
         validationErrors = []
         isSaving = true
+
+        if !trimmedNotes.isEmpty {
+            // Check A: Acronym alias
+            if let suggestion = AcronymAliasDetector.checkAcronymAlias(canonicalName: trimmedName, notes: trimmedNotes) {
+                pendingAliasSuggestion = suggestion
+                aliasPromptMessage = "'\(suggestion)' looks like the full name of \(trimmedName). Add as alias?"
+                showAliasPrompt = true
+                isSaving = false
+                return
+            }
+
+            // Check B: Short proper-noun
+            if AcronymAliasDetector.checkShortProperNoun(notes: trimmedNotes) {
+                pendingAliasSuggestion = trimmedNotes
+                aliasPromptMessage = "This looks like an alternate name. Add '\(trimmedNotes)' as alias?"
+                showAliasPrompt = true
+                isSaving = false
+                return
+            }
+        }
+
+        commitSave(addAlias: false)
+    }
+
+    private func commitSave(addAlias: Bool) {
+        let trimmedName = canonicalName.trimmingCharacters(in: .whitespaces)
+        let trimmedNotes = notes.trimmingCharacters(in: .whitespaces)
+        let resolvedNotes: String? = addAlias ? nil : (trimmedNotes.isEmpty ? nil : trimmedNotes)
 
         if let existing = existingEntity {
             // Update existing entity
             existing.canonicalName = trimmedName
             existing.entityType = selectedType.rawValue
-            existing.notes = trimmedNotes.isEmpty ? nil : trimmedNotes
+            existing.notes = resolvedNotes
             existing.updatedAt = Date()
+
+            if addAlias, let alias = pendingAliasSuggestion {
+                let entityAlias = EntityAlias(entityId: existing.id, alias: alias)
+                modelContext.insert(entityAlias)
+            }
         } else {
             // Create new entity
             let newEntity = Entity(
                 entityType: selectedType,
                 canonicalName: trimmedName,
-                notes: trimmedNotes.isEmpty ? nil : trimmedNotes
+                notes: resolvedNotes
             )
             modelContext.insert(newEntity)
+
+            if addAlias, let alias = pendingAliasSuggestion {
+                let entityAlias = EntityAlias(entityId: newEntity.id, alias: alias)
+                modelContext.insert(entityAlias)
+            }
         }
+
+        pendingAliasSuggestion = nil
 
         do {
             try modelContext.save()

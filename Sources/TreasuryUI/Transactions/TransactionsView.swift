@@ -6,7 +6,7 @@ public struct TransactionsView: View {
     @Environment(AppState.self) private var state
     @State private var transactions: [LedgerTransaction] = []
     @State private var accounts: [Account] = []
-    @State private var categories: [Category] = []
+    @State private var categories: [TreasuryKernel.Category] = []
     @State private var filter = LedgerService.TransactionFilter()
     @State private var showImport = false
     @State private var recategorizeTarget: LedgerTransaction?
@@ -151,7 +151,7 @@ public struct TransactionsView: View {
 
 fileprivate struct RecategorizeSheet: View {
     let transaction: LedgerTransaction
-    let categories: [Category]
+    let categories: [TreasuryKernel.Category]
     let onSelect: (Int64?) -> Void
     let onCancel: () -> Void
 

@@ -68,6 +68,12 @@ public struct CategoryRollup: Identifiable, Hashable, Sendable {
     public let name: String
     public let amount: Money
     public let count: Int
+
+    public init(name: String, amount: Money, count: Int) {
+        self.name = name
+        self.amount = amount
+        self.count = count
+    }
 }
 
 public struct AccountRollup: Identifiable, Hashable, Sendable {

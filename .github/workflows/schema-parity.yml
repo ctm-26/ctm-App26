@@ -3,7 +3,7 @@ name: "ci: schema-parity"
 on:
   pull_request:
     paths:
-      - "TreasuryKernel/src/db.c"
+      - "TreasuryKernelCLI/src/db.c"
       - "Sources/TreasuryKernel/Schema.swift"
       - ".github/workflows/schema-parity.yml"
 
@@ -20,7 +20,7 @@ jobs:
         run: |
           import re, sys
 
-          C_PATH = "TreasuryKernel/src/db.c"
+          C_PATH = "TreasuryKernelCLI/src/db.c"
           SW_PATH = "Sources/TreasuryKernel/Schema.swift"
 
           def strip_c_string_literals(text):

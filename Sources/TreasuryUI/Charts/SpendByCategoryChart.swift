@@ -2,6 +2,8 @@ import SwiftUI
 import Charts
 import TreasuryKernel
 
+#if canImport(UIKit)
+
 public enum SpendVisual: String, CaseIterable, Hashable {
     case donut = "Donut"
     case bars = "Bars"
@@ -162,3 +164,5 @@ extension SpendByCategoryChart: AXChartDescriptorRepresentable {
         )
     }
 }
+
+#endif

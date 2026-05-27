@@ -88,11 +88,14 @@ OUTSIDE v0.1:
 | `treasury account add`   | Ledger Core                   |
 | `treasury import`        | Import Gate                   |
 | `treasury tx list`       | Ledger Core / Output Mirror   |
+| `treasury tx add`        | Ledger Core / Output Mirror   |
 | `treasury category add`  | Rule Engine                   |
 | `treasury rule add`      | Rule Engine                   |
 | `treasury classify`      | Rule Engine                   |
 | `treasury report month`  | Output Mirror                 |
 | `treasury audit`         | Audit Trail                   |
+| `treasury export tx`     | Output Mirror (CSV)           |
+| `treasury export audit`  | Audit Trail (CSV)             |
 
 Every command writes to the audit log. When something looks wrong, the audit log
 is the first thing to read.
@@ -100,7 +103,7 @@ is the first thing to read.
 ## Build and test
 
 ```bash
-cd TreasuryKernel
+cd TreasuryKernelCLI
 make            # builds ./treasury
 make test       # runs end-to-end CLI tests
 make debug      # rebuilds with ASan + UBSan
@@ -125,6 +128,10 @@ export TREASURY_DB=./mybudget.db
 # 4. inspect what landed
 ./treasury tx list --month 2026-05 --limit 20
 
+# 4b. add a one-off manual entry (e.g. a cash transaction the bank doesn't see)
+./treasury tx add --account "Chase Checking" --date 2026-05-15 \
+                  --desc "ATM withdrawal" --amount -60.00 --category cash
+
 # 5. teach it your patterns
 ./treasury rule add SHOPRITE groceries 10
 ./treasury rule add SHELL    gas       10
@@ -140,6 +147,28 @@ export TREASURY_DB=./mybudget.db
 # 8. read the history
 ./treasury audit --limit 50
 ```
+
+### Exporting to CSV
+
+Both the ledger and the audit log can be exported as RFC 4180-compliant CSV.
+Fields that contain commas, quotes, or newlines are quoted and embedded quotes
+are escaped by doubling. The default output is `stdout`; pass `--out` to write
+to a file.
+
+```bash
+# all transactions, every account, every month
+./treasury export tx --out tx.csv
+
+# scoped slice (filters mirror `tx list`)
+./treasury export tx --account "Chase Checking" --month 2026-05 --out chase_may.csv
+
+# audit log in chronological order (oldest first); --limit caps the row count
+./treasury export audit --out audit.csv
+./treasury export audit --limit 100 > recent_audit.csv
+```
+
+Each export call appends its own row to the audit log (`export.tx` /
+`export.audit`) so the trail of exports is itself traceable.
 
 ## CSV formats supported
 

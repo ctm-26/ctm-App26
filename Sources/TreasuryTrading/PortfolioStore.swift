@@ -90,4 +90,30 @@ public struct PortfolioStore: Sendable {
         public let reason: String
         public let executedAt: String
     }
+
+    /// CSV-format string of every trade for a portfolio. Header row:
+    ///   executed_at,symbol,side,qty,price,fee,strategy,reason
+    /// Prices and fees are formatted as decimal dollars (not cents).
+    /// `qty` uses full precision (no rounding).
+    /// Strategy and reason are double-quoted with internal quotes escaped.
+    public func exportTradesCSV(portfolioId: Int64) async throws -> String {
+        // `recentTrades` binds limit as Int32, so we use a high cap rather
+        // than Int.max (which would overflow when narrowed).
+        let rows = try await recentTrades(portfolioId: portfolioId, limit: 1_000_000)
+        var out = "executed_at,symbol,side,qty,price,fee,strategy,reason\n"
+        for r in rows {
+            let qty = String(format: "%.8f", r.qty)
+            let price = Money(cents: r.priceCents).plainString
+            let fee = Money(cents: r.feeCents).plainString
+            let strategy = csvQuote(r.strategy)
+            let reason = csvQuote(r.reason)
+            out += "\(r.executedAt),\(r.symbol),\(r.side),\(qty),\(price),\(fee),\(strategy),\(reason)\n"
+        }
+        return out
+    }
+
+    private func csvQuote(_ s: String) -> String {
+        let escaped = s.replacingOccurrences(of: "\"", with: "\"\"")
+        return "\"\(escaped)\""
+    }
 }

@@ -6,6 +6,7 @@
 #include <strings.h>
 
 #include "account.h"
+#include "category.h"
 #include "db.h"
 #include "util.h"
 
@@ -65,11 +66,115 @@ static int tx_list(sqlite3 *db, const char *account, const char *month,
 	return 0;
 }
 
+static int tx_add(sqlite3 *db, const char *account, const char *date_in,
+                  const char *desc, const char *amount_in, const char *category)
+{
+	if (!account || !date_in || !desc || !amount_in) {
+		fprintf(stderr,
+		        "usage: treasury tx add --account <name> --date <YYYY-MM-DD> "
+		        "--desc <text> --amount <amount> [--category <name>]\n");
+		return 2;
+	}
+
+	long long account_id = account_find_id(db, account);
+	if (account_id < 0) {
+		fprintf(stderr, "treasury: unknown account '%s'\n", account);
+		return 1;
+	}
+
+	char date_iso[11];
+	if (util_normalize_date(date_in, date_iso) != 0) {
+		fprintf(stderr, "treasury: invalid --date '%s' (expect YYYY-MM-DD)\n",
+		        date_in);
+		return 1;
+	}
+
+	int64_t cents = 0;
+	if (util_parse_amount(amount_in, &cents) != 0) {
+		fprintf(stderr, "treasury: invalid --amount '%s'\n", amount_in);
+		return 1;
+	}
+
+	long long category_id = -1;
+	if (category && *category) {
+		category_id = category_get_or_create(db, category);
+		if (category_id < 0) {
+			fprintf(stderr, "treasury: could not resolve category '%s'\n",
+			        category);
+			return 1;
+		}
+	}
+
+	const char *sql =
+		"INSERT INTO transactions"
+		"(account_id, date, description, amount_cents, category_id, import_batch_id) "
+		"VALUES(?, ?, ?, ?, ?, NULL);";
+	sqlite3_stmt *stmt = NULL;
+	if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		fprintf(stderr, "treasury: prepare failed: %s\n", sqlite3_errmsg(db));
+		return 1;
+	}
+	sqlite3_bind_int64(stmt, 1, account_id);
+	db_bind_text(stmt, 2, date_iso);
+	db_bind_text(stmt, 3, desc);
+	sqlite3_bind_int64(stmt, 4, cents);
+	if (category_id > 0) sqlite3_bind_int64(stmt, 5, category_id);
+	else sqlite3_bind_null(stmt, 5);
+
+	int rc = sqlite3_step(stmt);
+	sqlite3_finalize(stmt);
+	if (rc != SQLITE_DONE) {
+		if (rc == SQLITE_CONSTRAINT) {
+			fprintf(stderr,
+			        "treasury: duplicate: same account/date/description/amount "
+			        "already exists\n");
+		} else {
+			fprintf(stderr, "treasury: could not add transaction: %s\n",
+			        sqlite3_errmsg(db));
+		}
+		return 1;
+	}
+
+	char details[512];
+	if (category && *category) {
+		snprintf(details, sizeof details,
+		         "account=%s date=%s amount=%lld category=%s",
+		         account, date_iso, (long long)cents, category);
+	} else {
+		snprintf(details, sizeof details,
+		         "account=%s date=%s amount=%lld",
+		         account, date_iso, (long long)cents);
+	}
+	db_audit(db, "tx.add", details);
+
+	char amt[32];
+	util_format_amount(cents, amt, sizeof amt);
+	printf("added transaction: %s | %s | %s | %s\n",
+	       date_iso, account, desc, amt);
+	return 0;
+}
+
 int cmd_tx(sqlite3 *db, int argc, char **argv)
 {
 	if (argc < 1) {
-		fprintf(stderr, "usage: treasury tx <list> [--account NAME] [--month YYYY-MM] [--category NAME] [--limit N]\n");
+		fprintf(stderr, "usage: treasury tx <list|add> ...\n");
 		return 2;
+	}
+	if (strcmp(argv[0], "add") == 0) {
+		const char *account = NULL, *date = NULL, *desc = NULL;
+		const char *amount = NULL, *category = NULL;
+		for (int i = 1; i < argc; i++) {
+			if (strcmp(argv[i], "--account") == 0 && i + 1 < argc) account = argv[++i];
+			else if (strcmp(argv[i], "--date") == 0 && i + 1 < argc) date = argv[++i];
+			else if (strcmp(argv[i], "--desc") == 0 && i + 1 < argc) desc = argv[++i];
+			else if (strcmp(argv[i], "--amount") == 0 && i + 1 < argc) amount = argv[++i];
+			else if (strcmp(argv[i], "--category") == 0 && i + 1 < argc) category = argv[++i];
+			else {
+				fprintf(stderr, "treasury: unknown tx add flag: %s\n", argv[i]);
+				return 2;
+			}
+		}
+		return tx_add(db, account, date, desc, amount, category);
 	}
 	if (strcmp(argv[0], "list") == 0) {
 		const char *account = NULL, *month = NULL, *category = NULL;

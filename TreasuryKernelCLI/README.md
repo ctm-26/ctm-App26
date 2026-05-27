@@ -88,6 +88,7 @@ OUTSIDE v0.1:
 | `treasury account add`   | Ledger Core                   |
 | `treasury import`        | Import Gate                   |
 | `treasury tx list`       | Ledger Core / Output Mirror   |
+| `treasury tx add`        | Ledger Core / Output Mirror   |
 | `treasury category add`  | Rule Engine                   |
 | `treasury rule add`      | Rule Engine                   |
 | `treasury classify`      | Rule Engine                   |
@@ -125,6 +126,10 @@ export TREASURY_DB=./mybudget.db
 # 4. inspect what landed
 ./treasury tx list --month 2026-05 --limit 20
 
+# 4b. add a one-off manual entry (e.g. a cash transaction the bank doesn't see)
+./treasury tx add --account "Chase Checking" --date 2026-05-15 \
+                  --desc "ATM withdrawal" --amount -60.00 --category cash
+
 # 5. teach it your patterns
 ./treasury rule add SHOPRITE groceries 10
 ./treasury rule add SHELL    gas       10
@@ -140,6 +145,15 @@ export TREASURY_DB=./mybudget.db
 # 8. read the history
 ./treasury audit --limit 50
 ```
+
+`tx add` mirrors the Swift `LedgerService.addTransaction` flow: dates are
+normalized through the same parser the importer uses, amounts accept the same
+forms (`$`, commas, parentheses), and an optional `--category` is created if it
+doesn't yet exist. Manual entries share the same `(account, date, description,
+amount)` uniqueness invariant as imported rows — re-running an identical
+`tx add` exits non-zero with `duplicate:` on stderr instead of silently
+inserting a second row. Every successful call writes a `tx.add` line to the
+audit log.
 
 ## CSV formats supported
 

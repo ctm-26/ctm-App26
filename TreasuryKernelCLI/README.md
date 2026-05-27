@@ -88,6 +88,7 @@ OUTSIDE v0.1:
 | `treasury account add`   | Ledger Core                   |
 | `treasury import`        | Import Gate                   |
 | `treasury tx list`       | Ledger Core / Output Mirror   |
+| `treasury tx add`        | Ledger Core / Output Mirror   |
 | `treasury category add`  | Rule Engine                   |
 | `treasury rule add`      | Rule Engine                   |
 | `treasury classify`      | Rule Engine                   |
@@ -126,6 +127,10 @@ export TREASURY_DB=./mybudget.db
 
 # 4. inspect what landed
 ./treasury tx list --month 2026-05 --limit 20
+
+# 4b. add a one-off manual entry (e.g. a cash transaction the bank doesn't see)
+./treasury tx add --account "Chase Checking" --date 2026-05-15 \
+                  --desc "ATM withdrawal" --amount -60.00 --category cash
 
 # 5. teach it your patterns
 ./treasury rule add SHOPRITE groceries 10

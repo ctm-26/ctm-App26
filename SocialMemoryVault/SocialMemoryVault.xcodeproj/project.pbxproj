@@ -3,10 +3,17 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 60;
+	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		039E259A2FD347DE00512F37 /* EntityType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 039E25992FD347DE00512F37 /* EntityType.swift */; };
+		039E259C2FD347E600512F37 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 039E259B2FD347E600512F37 /* Models.swift */; };
+		039E259E2FD347E600512F37 /* Validation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 039E259D2FD347E600512F37 /* Validation.swift */; };
+		039E25A22FD347E900512F37 /* DatabaseController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 039E25A12FD347E900512F37 /* DatabaseController.swift */; };
+		039E25A42FD347EF00512F37 /* ExportImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 039E25A32FD347EF00512F37 /* ExportImportView.swift */; };
+		039E25A62FD347F000512F37 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 039E25A52FD347F000512F37 /* ContentView.swift */; };
+		039E25A82FD347F100512F37 /* ViewHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 039E25A72FD347F100512F37 /* ViewHelpers.swift */; };
 		AA0000000000000000000001 /* SocialMemoryVaultApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000001 /* SocialMemoryVaultApp.swift */; };
 		AA0000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000002 /* ContentView.swift */; };
 		AA0000000000000000000003 /* Entity.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000003 /* Entity.swift */; };
@@ -52,7 +59,24 @@
 		GG0000000000000000000005 /* MigrationIdempotencyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0000000000000000000005 /* MigrationIdempotencyTests.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		EE0000000000000000000008 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DD0000000000000000000006 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DD0000000000000000000005;
+			remoteInfo = SocialMemoryVault;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		039E25992FD347DE00512F37 /* EntityType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityType.swift; sourceTree = "<group>"; };
+		039E259B2FD347E600512F37 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		039E259D2FD347E600512F37 /* Validation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Validation.swift; sourceTree = "<group>"; };
+		039E25A12FD347E900512F37 /* DatabaseController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseController.swift; sourceTree = "<group>"; };
+		039E25A32FD347EF00512F37 /* ExportImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportImportView.swift; sourceTree = "<group>"; };
+		039E25A52FD347F000512F37 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		039E25A72FD347F100512F37 /* ViewHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewHelpers.swift; sourceTree = "<group>"; };
 		BB0000000000000000000001 /* SocialMemoryVaultApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialMemoryVaultApp.swift; sourceTree = "<group>"; };
 		BB0000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		BB0000000000000000000003 /* Entity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Entity.swift; sourceTree = "<group>"; };
@@ -86,12 +110,12 @@
 		BB0000000000000000000031 /* ExportImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportImportView.swift; sourceTree = "<group>"; };
 		BB0000000000000000000050 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		BB0000000000000000000051 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
-		DD0000000000000000000004 /* SocialMemoryVault.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SocialMemoryVault.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB0000000000000000000060 /* PredicateClassificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PredicateClassificationService.swift; sourceTree = "<group>"; };
 		BB0000000000000000000061 /* MigrationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationService.swift; sourceTree = "<group>"; };
 		BB0000000000000000000062 /* DataHealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataHealthView.swift; sourceTree = "<group>"; };
 		BB0000000000000000000063 /* AcronymAliasDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcronymAliasDetector.swift; sourceTree = "<group>"; };
 		BB0000000000000000000064 /* StrandedValueService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrandedValueService.swift; sourceTree = "<group>"; };
+		DD0000000000000000000004 /* SocialMemoryVault.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SocialMemoryVault.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EE0000000000000000000001 /* SocialMemoryVaultTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SocialMemoryVaultTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FF0000000000000000000001 /* EntityResolutionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntityResolutionTests.swift; sourceTree = "<group>"; };
 		FF0000000000000000000002 /* PredicateClassificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PredicateClassificationTests.swift; sourceTree = "<group>"; };
@@ -99,16 +123,6 @@
 		FF0000000000000000000004 /* StrandedValueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrandedValueTests.swift; sourceTree = "<group>"; };
 		FF0000000000000000000005 /* MigrationIdempotencyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationIdempotencyTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXContainerItemProxy section */
-		EE0000000000000000000008 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = DD0000000000000000000006 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = DD0000000000000000000005;
-			remoteInfo = SocialMemoryVault;
-		};
-/* End PBXContainerItemProxy section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		DD0000000000000000000002 /* Frameworks */ = {
@@ -150,6 +164,7 @@
 			isa = PBXGroup;
 			children = (
 				BB0000000000000000000001 /* SocialMemoryVaultApp.swift */,
+				039E25A52FD347F000512F37 /* ContentView.swift */,
 				BB0000000000000000000002 /* ContentView.swift */,
 				CC0000000000000000000004 /* Models */,
 				CC0000000000000000000005 /* Utilities */,
@@ -158,6 +173,9 @@
 				CC0000000000000000000008 /* Features */,
 				BB0000000000000000000050 /* Assets.xcassets */,
 				CC0000000000000000000015 /* Preview Content */,
+				039E25992FD347DE00512F37 /* EntityType.swift */,
+				039E259B2FD347E600512F37 /* Models.swift */,
+				039E25A72FD347F100512F37 /* ViewHelpers.swift */,
 			);
 			path = SocialMemoryVault;
 			sourceTree = "<group>";
@@ -179,6 +197,7 @@
 			children = (
 				BB0000000000000000000008 /* IDGenerator.swift */,
 				BB0000000000000000000009 /* DateUtils.swift */,
+				039E259D2FD347E600512F37 /* Validation.swift */,
 				BB0000000000000000000010 /* Validation.swift */,
 				BB0000000000000000000063 /* AcronymAliasDetector.swift */,
 			);
@@ -189,7 +208,9 @@
 			isa = PBXGroup;
 			children = (
 				BB0000000000000000000011 /* DatabaseController.swift */,
+				039E25A12FD347E900512F37 /* DatabaseController.swift */,
 				BB0000000000000000000012 /* ExportService.swift */,
+				039E25A32FD347EF00512F37 /* ExportImportView.swift */,
 				BB0000000000000000000013 /* ImportService.swift */,
 				BB0000000000000000000061 /* MigrationService.swift */,
 			);
@@ -279,6 +300,14 @@
 			path = Settings;
 			sourceTree = "<group>";
 		};
+		CC0000000000000000000015 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				BB0000000000000000000051 /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
 		CC0000000000000000000020 /* SocialMemoryVaultTests */ = {
 			isa = PBXGroup;
 			children = (
@@ -289,14 +318,6 @@
 				FF0000000000000000000005 /* MigrationIdempotencyTests.swift */,
 			);
 			path = SocialMemoryVaultTests;
-			sourceTree = "<group>";
-		};
-		CC0000000000000000000015 /* Preview Content */ = {
-			isa = PBXGroup;
-			children = (
-				BB0000000000000000000051 /* Preview Assets.xcassets */,
-			);
-			path = "Preview Content";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -395,7 +416,9 @@
 				AA0000000000000000000002 /* ContentView.swift in Sources */,
 				AA0000000000000000000003 /* Entity.swift in Sources */,
 				AA0000000000000000000004 /* EntityAlias.swift in Sources */,
+				039E259E2FD347E600512F37 /* Validation.swift in Sources */,
 				AA0000000000000000000005 /* Memory.swift in Sources */,
+				039E25A82FD347F100512F37 /* ViewHelpers.swift in Sources */,
 				AA0000000000000000000006 /* MemoryEntityLink.swift in Sources */,
 				AA0000000000000000000007 /* Claim.swift in Sources */,
 				AA0000000000000000000008 /* IDGenerator.swift in Sources */,
@@ -406,15 +429,20 @@
 				AA0000000000000000000013 /* ImportService.swift in Sources */,
 				AA0000000000000000000014 /* EntityResolutionService.swift in Sources */,
 				AA0000000000000000000015 /* MemoryService.swift in Sources */,
+				039E259C2FD347E600512F37 /* Models.swift in Sources */,
 				AA0000000000000000000016 /* ClaimService.swift in Sources */,
+				039E25A22FD347E900512F37 /* DatabaseController.swift in Sources */,
 				AA0000000000000000000017 /* PrivacyFilterService.swift in Sources */,
 				AA0000000000000000000018 /* HomeView.swift in Sources */,
 				AA0000000000000000000019 /* EntityListView.swift in Sources */,
 				AA0000000000000000000020 /* EntityDetailView.swift in Sources */,
 				AA0000000000000000000021 /* AddEditEntityView.swift in Sources */,
 				AA0000000000000000000022 /* AliasManagerView.swift in Sources */,
+				039E259A2FD347DE00512F37 /* EntityType.swift in Sources */,
+				039E25A62FD347F000512F37 /* ContentView.swift in Sources */,
 				AA0000000000000000000023 /* MemoryListView.swift in Sources */,
 				AA0000000000000000000024 /* MemoryDetailView.swift in Sources */,
+				039E25A42FD347EF00512F37 /* ExportImportView.swift in Sources */,
 				AA0000000000000000000025 /* AddEditMemoryView.swift in Sources */,
 				AA0000000000000000000026 /* EntityLinkerView.swift in Sources */,
 				AA0000000000000000000027 /* ClaimListView.swift in Sources */,
@@ -574,6 +602,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"SocialMemoryVault/Preview Content\"";
+				DEVELOPMENT_TEAM = KV94QJ2U6S;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -586,7 +615,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.socialmemoryvault.app";
+				PRODUCT_BUNDLE_IDENTIFIER = com.socialmemoryvault.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -602,6 +631,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"SocialMemoryVault/Preview Content\"";
+				DEVELOPMENT_TEAM = KV94QJ2U6S;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -614,7 +644,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.socialmemoryvault.app";
+				PRODUCT_BUNDLE_IDENTIFIER = com.socialmemoryvault.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -631,7 +661,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.socialmemoryvault.app.tests";
+				PRODUCT_BUNDLE_IDENTIFIER = com.socialmemoryvault.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -650,7 +680,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.socialmemoryvault.app.tests";
+				PRODUCT_BUNDLE_IDENTIFIER = com.socialmemoryvault.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -681,8 +711,6 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-/* End XCConfigurationList section */
-
 		EE0000000000000000000005 /* Build configuration list for PBXNativeTarget "SocialMemoryVaultTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -692,6 +720,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+/* End XCConfigurationList section */
 	};
 	rootObject = DD0000000000000000000006 /* Project object */;
 }
